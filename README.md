@@ -1,79 +1,112 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# SmartKiosk: 지능형 하이브리드 키오스크
 
-# Getting Started
+**SmartKiosk**는 기존 터치 기반 키오스크에 **문맥을 이해하는 지능형 음성 인터페이스**를 결합한 하이브리드 시스템입니다.
+사용자는 상황에 따라 **터치와 음성 입력을 자유롭게 전환하거나 병행**할 수 있으며, 복잡한 메뉴 탐색을 **자연어 기반 대화**로 손쉽게 수행할 수 있습니다.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+시스템의 목표는 **모든 연령층의 사용자에게 학습 없이도 직관적인 인터페이스**를 제공하고, 키오스크 사용 중 겪는 어려움을 최소화하는 것입니다.
 
-## Step 1: Start the Metro Server
+---
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## 🌟 주요 기능
 
-To start Metro, run the following command from the _root_ of your React Native project:
+-   **하이브리드 상호작용 (Hybrid Interaction)**: 음성과 터치 입력 간 자유로운 전환을 지원하며, 문맥을 유지합니다.
+-   **지능형 음성 가이드 (Intelligent Voice Guidance)**: STT 기반의 정확한 음성 인식과 시나리오 기반 안내 기능을 제공합니다.
+
+---
+
+## 🏗️ 시스템 아키텍처
+
+SmartKiosk는 다음과 같은 4계층으로 구성됩니다:
+
+1.  **입력 계층 (Input Layer)**
+    -   터치 이벤트와 음성 입력(STT)을 수집 및 전처리
+    -   음성 입력은 실시간 텍스트로 변환됨
+
+2.  **대화 및 탐색 엔진**
+    -   입력 이벤트의 의미를 해석하고, 사용자 의도 및 문맥을 관리
+    -   복합 명령 처리 및 애플리케이션 로직에 전달
+
+3.  **애플리케이션 로직 (Application Logic)**
+    -   메뉴 탐색, 장바구니 처리, 주문 관리 등 주요 기능 수행
+
+4.  **출력 계층 (Output Layer)**
+    -   사용자에게 GUI 및 TTS(Text-to-Speech)를 통해 시각/청각 정보 제공
+
+---
+
+## 🚀 개발 로드맵
+
+-   [x] **Phase 1: 기본 음성 인터페이스 구축**
+    -   STT/TTS 연동, 마이크 권한 처리
+    -   플로팅 마이크 버튼 기반 명령어 처리 및 음성 피드백 구현
+    -   메뉴 연동 및 장바구니 수량 계산 버그 수정
+-   [ ] **Phase 2: LLM 연동 및 지능형 처리**
+    -   Gemini Pro API 연동
+    -   프롬프트 엔지니어링을 통한 복잡한 자연어 명령 처리 고도화
+-   [ ] **Phase 3: 대화 컨텍스트 및 추천 시스템**
+    -   대화 히스토리 기반 컨텍스트 관리
+    -   사용자 행동 및 판매 데이터를 활용한 추천 기능 개발
+-   [ ] **Phase 4: 백엔드 연동**
+    -   Node.js 기반 서버 구축 및 MongoDB 연동
+    -   주문 처리 및 데이터 보안 기능 강화
+
+---
+
+## 🛠️ 설치 및 실행 방법
+
+이 프로젝트는 **React Native** 기반으로 개발되었습니다.
+
+### 1. 개발 환경 설정
+
+React Native 개발 환경이 설정되어 있지 않다면, [공식 문서](https://reactnative.dev/docs/environment-setup)를 참고하여 환경을 구성해주세요.
+
+### 2. 프로젝트 클론 및 종속성 설치
 
 ```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+git clone https://github.com/Min-DongYoung/SmartKiosk.git
+cd SmartKiosk
+npm install
 ```
 
-## Step 2: Start your Application
+### 3. Android 권한 설정 (Android 사용 시)
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+`android/app/src/main/AndroidManifest.xml`에 다음 권한이 포함되어 있어야 합니다:
 
-### For Android
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
+### 4. 앱 실행
+
+#### (1) Metro Bundler 시작
 
 ```bash
-# using npm
+npm start -- --reset-cache
+```
+
+#### (2) 앱 실행
+
+Android 기기에서 실행:
+
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### For iOS
+iOS 기기에서 실행:
 
 ```bash
-# using npm
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+성공적으로 실행되면, 지능형 하이브리드 키오스크 앱을 확인할 수 있습니다.
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+---
 
-## Step 3: Modifying your App
+## 💡 주요 기술 스택
 
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+-   React Native
+-   JavaScript
+-   Google STT / TTS API
+-   Gemini Pro API (예정)
+-   Node.js + MongoDB (예정)
