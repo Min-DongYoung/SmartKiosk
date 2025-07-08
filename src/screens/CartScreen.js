@@ -168,6 +168,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    color: 'black',
   },
   itemOptions: {
     fontSize: 14,
@@ -265,9 +266,8 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   quantityButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
+    fontSize: 15,
+    color: 'black',
+}});
 
 export default CartScreen;

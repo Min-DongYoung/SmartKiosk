@@ -46,7 +46,7 @@ const MenuDetailScreen = ({route, navigation}) => {
     const cartItem = {
       id: item.id,
       name: item.name,
-      price: item.price,
+      price: adjustedPrice, // 기본 가격 대신 조정된 가격 사용
       quantity: quantity,
       options: selectedOptions,
       totalPrice: adjustedPrice * quantity,
@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: 'black',
   },
   price: {
     fontSize: 24,
@@ -235,14 +236,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quantityButtonText: {
-    fontSize: 24,
-    color: '#333',
+    fontSize: 20,
+    color: 'black',
   },
   quantity: {
     fontSize: 20,
     marginHorizontal: 30,
     minWidth: 40,
     textAlign: 'center',
+    color: 'black',
   },
   totalSection: {
     flexDirection: 'row',

@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 
-import menuData from '../data/menuData';
+import { menuItems } from '../data/menuData';
 
 const MenuListScreen = ({navigation}) => {
   const renderMenuItem = ({item}) => (
@@ -36,7 +36,7 @@ const MenuListScreen = ({navigation}) => {
       </View>
 
       <FlatList
-        data={menuData}
+        data={Object.values(menuItems)}
         renderItem={renderMenuItem}
         keyExtractor={item => item.id}
         numColumns={2}
@@ -98,6 +98,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    color: 'black',
   },
   menuCategory: {
     fontSize: 14,

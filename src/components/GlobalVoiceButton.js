@@ -1,58 +1,81 @@
-import React, {useContext} from 'react';
-import {TouchableOpacity, StyleSheet, Animated, Easing} from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  TouchableOpacity,
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Platform
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import {VoiceContext} from '../contexts/VoiceContext';
+import { useVoice } from '../contexts/VoiceContext';
 
 const GlobalVoiceButton = () => {
-  const {isListening, startListening, stopListening} = useContext(VoiceContext);
-  const pulseAnim = React.useRef(new Animated.Value(0)).current;
+  const { isListening, recognizedText, startListening, stopListening } = useVoice();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isListening) {
+      // 펄스 애니메이션
       Animated.loop(
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
       ).start();
     } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(0);
+      pulseAnim.setValue(1);
     }
-  }, [isListening, pulseAnim]);
-
-  const pulseStyle = {
-    transform: [
-      {
-        scale: pulseAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.5],
-        }),
-      },
-    ],
-    opacity: pulseAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.7, 0],
-    }),
-  };
+  }, [isListening]);
 
   return (
-    <TouchableOpacity
-      style={[styles.button, isListening && styles.listening]}
-      onPress={isListening ? stopListening : startListening}>
-      <Icon name={isListening ? 'mic' : 'mic-none'} size={30} color="white" />
-      {isListening && <Animated.View style={[styles.pulse, pulseStyle]} />}
-    </TouchableOpacity>
+    <>
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            transform: [{ scale: pulseAnim }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.button, isListening && styles.listeningButton]}
+          onPress={isListening ? stopListening : startListening}
+          activeOpacity={0.8}
+        >
+          <Icon 
+            name={isListening ? "mic" : "mic-none"} 
+            size={30} 
+            color="white" 
+          />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* 인식된 텍스트 표시 */}
+      {recognizedText !== '' && (
+        <View style={styles.textContainer}>
+          <Text style={styles.recognizedText}>{recognizedText}</Text>
+        </View>
+      )}
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
+  container: {
     position: 'absolute',
     bottom: 30,
     right: 30,
+  },
+  button: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -61,21 +84,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    zIndex: 1000, // VoiceControlOverlay와 겹치지 않도록 zIndex 설정
   },
-  listening: {
+  listeningButton: {
     backgroundColor: '#f44336',
   },
-  pulse: {
+  textContainer: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f44336',
-    opacity: 0.3,
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 15,
+    borderRadius: 10,
+  },
+  recognizedText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 
