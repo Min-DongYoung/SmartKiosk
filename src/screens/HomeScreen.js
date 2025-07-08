@@ -1,20 +1,16 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity
-} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 
-const HomeScreen = ({ navigation }) => {  // navigation prop 추가
+const HomeScreen = ({navigation}) => {
+  // navigation prop 추가
   return (
     <View style={styles.container}>
       <Text style={styles.title}>스마트 키오스크</Text>
       <Text style={styles.subtitle}>음성과 터치로 주문하세요</Text>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('MenuList')}  // 네비게이션 추가
+        onPress={() => navigation.navigate('MenuList')} // 네비게이션 추가
       >
         <Text style={styles.buttonText}>주문 시작</Text>
       </TouchableOpacity>

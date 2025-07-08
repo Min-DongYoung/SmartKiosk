@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useContext} from 'react';
 import {
   View,
   Text,
@@ -7,67 +7,49 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import {CartContext} from '../context/CartContext';
 
-const CartScreen = ({ navigation }) => {
-  // 샘플 장바구니 데이터
-  const [cartItems, setCartItems] = useState([
-    {
-      id: '1',
-      name: '아메리카노',
-      price: 4500,
-      quantity: 2,
-      options: { size: 'large', temperature: 'ice' },
-      totalPrice: 9000,
-    },
-    {
-      id: '2',
-      name: '크로와상',
-      price: 3500,
-      quantity: 1,
-      options: {},
-      totalPrice: 3500,
-    },
-  ]);
+const CartScreen = ({navigation}) => {
+  const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} =
+    useContext(CartContext);
 
-  const removeItem = (id) => {
-    Alert.alert(
-      '삭제 확인',
-      '이 항목을 장바구니에서 삭제하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          onPress: () => {
-            setCartItems(cartItems.filter(item => item.id !== id));
-          },
+  const removeItem = itemToRemove => {
+    Alert.alert('삭제 확인', '이 항목을 장바구니에서 삭제하시겠습니까?', [
+      {text: '취소', style: 'cancel'},
+      {
+        text: '삭제',
+        onPress: () => {
+          removeFromCart(itemToRemove.id, itemToRemove.options);
         },
-      ]
-    );
-  };
-
-  const getTotalPrice = () => {
-    return cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      },
+    ]);
   };
 
   const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      Alert.alert('알림', '장바구니가 비어있습니다.');
+      return;
+    }
+
     Alert.alert(
       '주문 확인',
       `총 ${getTotalPrice().toLocaleString()}원을 결제하시겠습니까?`,
       [
-        { text: '취소', style: 'cancel' },
+        {text: '취소', style: 'cancel'},
         {
           text: '결제하기',
           onPress: () => {
             // 결제 로직
             Alert.alert('주문 완료', '주문이 접수되었습니다!');
+            clearCart(); // 장바구니 비우기
             navigation.navigate('Home');
           },
         },
-      ]
+      ],
     );
   };
 
-  const renderCartItem = ({ item }) => (
+  const renderCartItem = ({item}) => (
     <View style={styles.cartItem}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
@@ -75,14 +57,35 @@ const CartScreen = ({ navigation }) => {
           {item.options.size && `사이즈: ${item.options.size}`}
           {item.options.temperature && `, ${item.options.temperature}`}
         </Text>
-        <Text style={styles.itemQuantity}>수량: {item.quantity}개</Text>
+        <View style={styles.quantityControls}>
+          <TouchableOpacity
+            style={styles.quantityButton}
+            onPress={() =>
+              updateQuantity(
+                item.id,
+                item.options,
+                Math.max(1, item.quantity - 1),
+              )
+            }>
+            <Text style={styles.quantityButtonText}>-</Text>
+          </TouchableOpacity>
+          <Text style={styles.itemQuantity}>{item.quantity}개</Text>
+          <TouchableOpacity
+            style={styles.quantityButton}
+            onPress={() =>
+              updateQuantity(item.id, item.options, item.quantity + 1)
+            }>
+            <Text style={styles.quantityButtonText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.itemPriceSection}>
-        <Text style={styles.itemPrice}>{item.totalPrice.toLocaleString()}원</Text>
+        <Text style={styles.itemPrice}>
+          {item.totalPrice.toLocaleString()}원
+        </Text>
         <TouchableOpacity
           style={styles.removeButton}
-          onPress={() => removeItem(item.id)}
-        >
+          onPress={() => removeItem(item)}>
           <Text style={styles.removeButtonText}>삭제</Text>
         </TouchableOpacity>
       </View>
@@ -100,8 +103,7 @@ const CartScreen = ({ navigation }) => {
           <Text style={styles.emptyText}>장바구니가 비어있습니다</Text>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('MenuList')}
-          >
+            onPress={() => navigation.navigate('MenuList')}>
             <Text style={styles.continueButtonText}>메뉴 보러가기</Text>
           </TouchableOpacity>
         </View>
@@ -110,7 +112,7 @@ const CartScreen = ({ navigation }) => {
           <FlatList
             data={cartItems}
             renderItem={renderCartItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => `${item.id}-${JSON.stringify(item.options)}`}
             contentContainerStyle={styles.cartList}
           />
 
@@ -123,8 +125,7 @@ const CartScreen = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={styles.checkoutButton}
-              onPress={handleCheckout}
-            >
+              onPress={handleCheckout}>
               <Text style={styles.checkoutButtonText}>결제하기</Text>
             </TouchableOpacity>
           </View>
@@ -176,6 +177,7 @@ const styles = StyleSheet.create({
   itemQuantity: {
     fontSize: 14,
     color: '#666',
+    marginHorizontal: 10,
   },
   itemPriceSection: {
     alignItems: 'flex-end',
@@ -246,6 +248,24 @@ const styles = StyleSheet.create({
   checkoutButtonText: {
     color: 'white',
     fontSize: 20,
+    fontWeight: 'bold',
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  quantityButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 15,
+  },
+  quantityButtonText: {
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

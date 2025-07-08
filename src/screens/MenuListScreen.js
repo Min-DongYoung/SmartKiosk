@@ -8,45 +8,14 @@ import {
   Image,
 } from 'react-native';
 
-const MenuListScreen = ({ navigation }) => {
-  // 샘플 메뉴 데이터
-  const menuData = [
-    {
-      id: '1',
-      name: '아메리카노',
-      price: 4500,
-      category: '커피',
-      image: 'https://via.placeholder.com/100',
-    },
-    {
-      id: '2',
-      name: '카페라떼',
-      price: 5000,
-      category: '커피',
-      image: 'https://via.placeholder.com/100',
-    },
-    {
-      id: '3',
-      name: '초코라떼',
-      price: 5500,
-      category: '음료',
-      image: 'https://via.placeholder.com/100',
-    },
-    {
-      id: '4',
-      name: '크로와상',
-      price: 3500,
-      category: '베이커리',
-      image: 'https://via.placeholder.com/100',
-    },
-  ];
+import menuData from '../data/menuData';
 
-  const renderMenuItem = ({ item }) => (
+const MenuListScreen = ({navigation}) => {
+  const renderMenuItem = ({item}) => (
     <TouchableOpacity
       style={styles.menuItem}
-      onPress={() => navigation.navigate('MenuDetail', { item })}
-    >
-      <Image source={{ uri: item.image }} style={styles.menuImage} />
+      onPress={() => navigation.navigate('MenuDetail', {item})}>
+      <Image source={{uri: item.image}} style={styles.menuImage} />
       <View style={styles.menuInfo}>
         <Text style={styles.menuName}>{item.name}</Text>
         <Text style={styles.menuCategory}>{item.category}</Text>
@@ -61,16 +30,15 @@ const MenuListScreen = ({ navigation }) => {
         <Text style={styles.title}>메뉴 선택</Text>
         <TouchableOpacity
           style={styles.cartButton}
-          onPress={() => navigation.navigate('Cart')}
-        >
+          onPress={() => navigation.navigate('Cart')}>
           <Text style={styles.cartButtonText}>장바구니</Text>
         </TouchableOpacity>
       </View>
-      
+
       <FlatList
         data={menuData}
         renderItem={renderMenuItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={styles.menuList}
       />

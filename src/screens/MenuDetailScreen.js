@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState, useContext} from 'react';
 import {
   View,
   Text,
@@ -6,87 +6,127 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
+import {CartContext} from '../context/CartContext';
 
-const MenuDetailScreen = ({ route, navigation }) => {
-  const { item } = route.params;
+const MenuDetailScreen = ({route, navigation}) => {
+  const {item} = route.params;
+  const {addToCart} = useContext(CartContext);
+
   const [quantity, setQuantity] = useState(1);
-  const [selectedOptions, setSelectedOptions] = useState({
-    size: 'medium',
-    temperature: 'hot',
+  const [selectedOptions, setSelectedOptions] = useState(() => {
+    const initialSize =
+      item.options.size && item.options.size.includes('medium')
+        ? 'medium'
+        : item.options.size
+        ? item.options.size[0]
+        : null;
+    const initialTemperature = item.options.temperature
+      ? item.options.temperature[0]
+      : null;
+    return {
+      size: initialSize,
+      temperature: initialTemperature,
+    };
   });
 
+  const calculateAdjustedPrice = () => {
+    let adjustedPrice = item.price;
+    if (selectedOptions.size === 'small') {
+      adjustedPrice -= 500;
+    } else if (selectedOptions.size === 'large') {
+      adjustedPrice += 500;
+    }
+    return adjustedPrice;
+  };
+
   const handleAddToCart = () => {
-    // 장바구니에 추가하는 로직
+    const adjustedPrice = calculateAdjustedPrice();
     const cartItem = {
-      ...item,
-      quantity,
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: quantity,
       options: selectedOptions,
-      totalPrice: item.price * quantity,
+      totalPrice: adjustedPrice * quantity,
     };
-    
-    console.log('장바구니에 추가:', cartItem);
-    navigation.navigate('Cart', { newItem: cartItem });
+
+    addToCart(cartItem);
+    Alert.alert('장바구니', `${item.name}이(가) 장바구니에 추가되었습니다.`);
+    navigation.navigate('MenuList');
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Image source={{ uri: item.image }} style={styles.image} />
-      
+      <Image source={{uri: item.image}} style={styles.image} />
+
       <View style={styles.content}>
         <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.price}>{item.price.toLocaleString()}원</Text>
-        
-        {/* 옵션 선택 */}
-        <View style={styles.optionSection}>
-          <Text style={styles.optionTitle}>사이즈</Text>
-          <View style={styles.optionButtons}>
-            {['small', 'medium', 'large'].map((size) => (
-              <TouchableOpacity
-                key={size}
-                style={[
-                  styles.optionButton,
-                  selectedOptions.size === size && styles.selectedOption,
-                ]}
-                onPress={() => setSelectedOptions({ ...selectedOptions, size })}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    selectedOptions.size === size && styles.selectedText,
-                  ]}
-                >
-                  {size === 'small' ? '작은' : size === 'medium' ? '보통' : '큰'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <Text style={styles.price}>
+          {calculateAdjustedPrice().toLocaleString()}원
+        </Text>
 
-        <View style={styles.optionSection}>
-          <Text style={styles.optionTitle}>온도</Text>
-          <View style={styles.optionButtons}>
-            {['hot', 'ice'].map((temp) => (
-              <TouchableOpacity
-                key={temp}
-                style={[
-                  styles.optionButton,
-                  selectedOptions.temperature === temp && styles.selectedOption,
-                ]}
-                onPress={() => setSelectedOptions({ ...selectedOptions, temperature: temp })}
-              >
-                <Text
+        {/* 옵션 선택 */}
+        {item.options.size && (
+          <View style={styles.optionSection}>
+            <Text style={styles.optionTitle}>사이즈</Text>
+            <View style={styles.optionButtons}>
+              {item.options.size.map(size => (
+                <TouchableOpacity
+                  key={size}
                   style={[
-                    styles.optionText,
-                    selectedOptions.temperature === temp && styles.selectedText,
+                    styles.optionButton,
+                    selectedOptions.size === size && styles.selectedOption,
                   ]}
-                >
-                  {temp === 'hot' ? '따뜻한' : '차가운'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  onPress={() =>
+                    setSelectedOptions({...selectedOptions, size})
+                  }>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selectedOptions.size === size && styles.selectedText,
+                    ]}>
+                    {size === 'small'
+                      ? '작은'
+                      : size === 'medium'
+                      ? '보통'
+                      : '큰'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
+
+        {item.options.temperature && (
+          <View style={styles.optionSection}>
+            <Text style={styles.optionTitle}>온도</Text>
+            <View style={styles.optionButtons}>
+              {item.options.temperature.map(temp => (
+                <TouchableOpacity
+                  key={temp}
+                  style={[
+                    styles.optionButton,
+                    selectedOptions.temperature === temp &&
+                      styles.selectedOption,
+                  ]}
+                  onPress={() =>
+                    setSelectedOptions({...selectedOptions, temperature: temp})
+                  }>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selectedOptions.temperature === temp &&
+                        styles.selectedText,
+                    ]}>
+                    {temp === 'hot' ? '따뜻한' : '차가운'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* 수량 선택 */}
         <View style={styles.quantitySection}>
@@ -94,15 +134,13 @@ const MenuDetailScreen = ({ route, navigation }) => {
           <View style={styles.quantityControls}>
             <TouchableOpacity
               style={styles.quantityButton}
-              onPress={() => setQuantity(Math.max(1, quantity - 1))}
-            >
+              onPress={() => setQuantity(Math.max(1, quantity - 1))}>
               <Text style={styles.quantityButtonText}>-</Text>
             </TouchableOpacity>
             <Text style={styles.quantity}>{quantity}</Text>
             <TouchableOpacity
               style={styles.quantityButton}
-              onPress={() => setQuantity(quantity + 1)}
-            >
+              onPress={() => setQuantity(quantity + 1)}>
               <Text style={styles.quantityButtonText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -112,7 +150,7 @@ const MenuDetailScreen = ({ route, navigation }) => {
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>합계</Text>
           <Text style={styles.totalPrice}>
-            {(item.price * quantity).toLocaleString()}원
+            {(calculateAdjustedPrice() * quantity).toLocaleString()}원
           </Text>
         </View>
 
