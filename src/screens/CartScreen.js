@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import {CartContext} from '../context/CartContext';
+import {CartContext} from '../contexts/CartContext';
 
 const CartScreen = ({navigation}) => {
   const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} =

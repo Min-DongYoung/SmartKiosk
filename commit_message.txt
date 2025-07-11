@@ -1,8 +1,1 @@
-feat: Re-implement core kiosk features and cart management
-
-Re-implemented the following features after reverting to a previous state:
-- Centralized menu data in src/data/menuData.js.
-- Implemented global cart state management using Context API (src/context/CartContext.js).
-- Added quantity increment/decrement and option selection (size, temperature) in MenuDetailScreen.
-- Ensured price variation based on size option in MenuDetailScreen and CartScreen.
-- Updated CartScreen UI/UX for better cart management.
+docs: Update README.md with project overview and roadmap

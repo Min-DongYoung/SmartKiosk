@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { CartProvider } from './src/context/CartContext';
+import { CartProvider } from './src/contexts/CartContext';
 import { VoiceProvider } from './src/contexts/VoiceContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import GlobalVoiceButton from './src/components/GlobalVoiceButton';

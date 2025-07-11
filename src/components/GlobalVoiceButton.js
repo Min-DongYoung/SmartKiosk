@@ -5,13 +5,24 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Platform
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useNavigation } from '@react-navigation/native'; // 추가
 import { useVoice } from '../contexts/VoiceContext';
 
 const GlobalVoiceButton = () => {
-  const { isListening, recognizedText, startListening, stopListening } = useVoice();
+  const { 
+    isListening, 
+    isProcessing, 
+    recognizedText, 
+    startListening, 
+    stopListening,
+    processCommand, // 추가
+    clearRecognizedText // 추가
+  } = useVoice();
+  
+  const navigation = useNavigation(); // 추가
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -36,6 +47,26 @@ const GlobalVoiceButton = () => {
     }
   }, [isListening]);
 
+  // recognizedText 변경 감지하여 processCommand 호출
+  useEffect(() => {
+    if (recognizedText && !isListening && !isProcessing) {
+      // 빈 문자열이 아니고, 듣기/처리 중이 아닐 때만 실행
+      processCommand(recognizedText, navigation);
+      
+      // 처리 후 3초 뒤에 텍스트 초기화
+      setTimeout(() => {
+        clearRecognizedText();
+      }, 3000);
+    }
+  }, [recognizedText, navigation, isListening, isProcessing, processCommand, clearRecognizedText]); // 의존성 배열 추가
+
+  const getStatusMessage = () => {
+    if (isProcessing) return '처리 중...';
+    if (isListening) return '듣고 있습니다...';
+    if (recognizedText) return recognizedText;
+    return '';
+  };
+
   return (
     <>
       <Animated.View
@@ -47,28 +78,40 @@ const GlobalVoiceButton = () => {
         ]}
       >
         <TouchableOpacity
-          style={[styles.button, isListening && styles.listeningButton]}
+          style={[
+            styles.button, 
+            isListening && styles.listeningButton,
+            isProcessing && styles.processingButton // 추가
+          ]}
           onPress={isListening ? stopListening : startListening}
+          disabled={isProcessing} // 추가
           activeOpacity={0.8}
         >
-          <Icon 
-            name={isListening ? "mic" : "mic-none"} 
-            size={30} 
-            color="white" 
-          />
+          {isProcessing ? ( // 추가
+            <ActivityIndicator color="white" size="large" /> // 추가
+          ) : ( // 추가
+            <Icon 
+              name={isListening ? "mic" : "mic-none"} 
+              size={30} 
+              color="white" 
+            />
+          )}
         </TouchableOpacity>
       </Animated.View>
 
       {/* 인식된 텍스트 표시 */}
-      {recognizedText !== '' && (
+      {getStatusMessage() !== '' && (
         <View style={styles.textContainer}>
-          <Text style={styles.recognizedText}>{recognizedText}</Text>
+          <Text style={styles.statusText}> {/* recognizedText 대신 statusText 사용 */}
+            {getStatusMessage()}
+          </Text>
         </View>
       )}
     </>
   );
 };
 
+// 스타일 추가
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -91,6 +134,9 @@ const styles = StyleSheet.create({
   listeningButton: {
     backgroundColor: '#f44336',
   },
+  processingButton: { // 추가
+    backgroundColor: '#FF9800',
+  },
   textContainer: {
     position: 'absolute',
     bottom: 100,
@@ -100,11 +146,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
   },
-  recognizedText: {
+  statusText: { // recognizedText 대신 statusText 사용
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-  },
+  }
 });
 
 export default GlobalVoiceButton;
