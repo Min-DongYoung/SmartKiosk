@@ -40,9 +40,10 @@ SmartKiosk는 다음과 같은 4계층으로 구성됩니다:
     -   STT/TTS 연동, 마이크 권한 처리
     -   플로팅 마이크 버튼 기반 명령어 처리 및 음성 피드백 구현
     -   메뉴 연동 및 장바구니 수량 계산 버그 수정
--   [ ] **Phase 2: LLM 연동 및 지능형 처리**
-    -   Gemini Pro API 연동
-    -   프롬프트 엔지니어링을 통한 복잡한 자연어 명령 처리 고도화
+-   [x] **Phase 2: LLM 연동 및 지능형 처리**
+    -   Google Gemini API (gemini-2.0-flash) 연동 완료
+    -   프롬프트 엔지니어링을 통한 복잡한 자연어 명령 처리 고도화 시작
+    -   API 키 관리 방식 (`src/config.js`) 및 Context 구조 리팩토링 완료
 -   [ ] **Phase 3: 대화 컨텍스트 및 추천 시스템**
     -   대화 히스토리 기반 컨텍스트 관리
     -   사용자 행동 및 판매 데이터를 활용한 추천 기능 개발
@@ -68,7 +69,19 @@ cd SmartKiosk
 npm install
 ```
 
-### 3. Android 권한 설정 (Android 사용 시)
+### 3. Gemini API 키 설정
+
+Google Gemini API를 사용하기 위해 API 키를 설정해야 합니다.
+
+1.  `src/config.js` 파일을 생성합니다.
+2.  생성된 `src/config.js` 파일에 다음 내용을 추가하고, `'YOUR_GEMINI_API_KEY'` 부분을 발급받은 실제 Gemini API 키로 교체합니다.
+    ```javascript
+    // src/config.js
+    export const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+    ```
+    **주의:** `src/config.js` 파일은 `.gitignore`에 등록되어 Git 저장소에 업로드되지 않으므로, 보안에 안전합니다.
+
+### 4. Android 권한 설정 (Android 사용 시)
 
 `android/app/src/main/AndroidManifest.xml`에 다음 권한이 포함되어 있어야 합니다:
 
@@ -77,7 +90,7 @@ npm install
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
-### 4. 앱 실행
+### 5. 앱 실행
 
 #### (1) Metro Bundler 시작
 
@@ -108,5 +121,5 @@ npm run ios
 -   React Native
 -   JavaScript
 -   Google STT / TTS API
--   Gemini Pro API (예정)
+-   Google Gemini API (gemini-2.0-flash)
 -   Node.js + MongoDB (예정)
