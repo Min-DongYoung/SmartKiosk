@@ -4,10 +4,12 @@ import HomeScreen from '../screens/HomeScreen';
 import MenuListScreen from '../screens/MenuListScreen';
 import MenuDetailScreen from '../screens/MenuDetailScreen';
 import CartScreen from '../screens/CartScreen';
+import RecommendationModal from '../components/RecommendationModal'; // 추가
 
-const Stack = createStackNavigator();
+const RootStack = createStackNavigator();
 
-export default function AppNavigator() {
+const MainStack = () => {
+  const Stack = createStackNavigator();
   return (
     <Stack.Navigator initialRouteName="Home">
       <Stack.Screen 
@@ -31,5 +33,26 @@ export default function AppNavigator() {
         options={{ title: '장바구니' }} 
       />
     </Stack.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  return (
+    <RootStack.Navigator screenOptions={{ presentation: 'modal' }}>
+      <RootStack.Screen
+        name="Main"
+        component={MainStack}
+        options={{ headerShown: false }}
+      />
+      <RootStack.Screen
+        name="RecommendationModal"
+        component={RecommendationModal}
+        options={{ 
+            headerShown: false,
+            cardStyle: { backgroundColor: 'transparent' },
+            presentation: 'transparentModal',
+        }}
+      />
+    </RootStack.Navigator>
   );
 }

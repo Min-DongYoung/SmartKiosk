@@ -1,1 +1,5 @@
-docs: Update README.md with project overview and roadmap
+docs: Update README.md with API key setup and Gemini integration details
+
+Updated README.md to reflect the new API key management using src/config.js and
+to highlight the integration of Google Gemini API (gemini-2.0-flash model)
+for intelligent voice guidance. Also updated the development roadmap.

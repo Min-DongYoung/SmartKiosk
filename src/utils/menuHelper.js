@@ -1,20 +1,31 @@
-import menuData from '../data/menuData';
+// src/utils/menuHelper.js
+import { menuItems, calculatePrice } from '../data/menuData';
 
-export const getMenuPrice = (menuName, size) => {
-  const menuItem = menuData.find(item => item.name === menuName);
-
+export const getMenuPrice = (menuName, size = 'medium', extras = []) => {
+  const menuItem = menuItems[menuName];
+  
   if (!menuItem) {
-    return 0; // 메뉴를 찾을 수 없으면 0 반환
+    console.warn(`메뉴를 찾을 수 없습니다: ${menuName}`);
+    return 0;
   }
+  
+  return calculatePrice(menuItem, size, extras);
+};
 
-  let price = menuItem.price;
+// 메뉴 이름으로 메뉴 아이템 가져오기
+export const getMenuItemByName = (menuName) => {
+  return menuItems[menuName] || null;
+};
 
-  // 사이즈에 따른 가격 변동 (MenuDetailScreen의 로직과 동일하게)
-  if (size === 'small') {
-    price -= 500;
-  } else if (size === 'large') {
-    price += 500;
+// 카테고리별 메뉴 필터링
+export const getMenusByCategory = (category) => {
+  return Object.values(menuItems).filter(item => item.category === category);
+};
+
+// 메뉴 옵션 유효성 검사
+export const validateMenuOption = (menuItem, optionType, optionValue) => {
+  if (!menuItem.options || !menuItem.options[optionType]) {
+    return false;
   }
-
-  return price;
+  return menuItem.options[optionType].includes(optionValue);
 };

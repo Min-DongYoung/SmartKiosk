@@ -1,37 +1,64 @@
-import React, {createContext, useState} from 'react';
+import React, { createContext, useState, useCallback } from 'react';
+import { menuItems, calculatePrice, findMenuItem } from '../data/menuData';
 
 export const CartContext = createContext();
 
-export const CartProvider = ({children}) => {
+export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
 
-  const addToCart = item => {
+  const addToCart = useCallback((itemFromVoice) => {
+    const menuItem = findMenuItem(itemFromVoice.name);
+    if (!menuItem) {
+      console.warn(`메뉴를 찾을 수 없음: ${itemFromVoice.name}`);
+      return;
+    }
+
+    const price = calculatePrice(menuItem, itemFromVoice.size, itemFromVoice.options);
+    const newItem = {
+      id: menuItem.id,
+      name: menuItem.name,
+      price: price,
+      quantity: itemFromVoice.quantity || 1,
+      options: {
+        size: itemFromVoice.size || 'medium',
+        temperature: itemFromVoice.temperature,
+        extras: itemFromVoice.options || [],
+      },
+      totalPrice: price * (itemFromVoice.quantity || 1),
+    };
+
     setCartItems(prevItems => {
-      // 이미 장바구니에 있는 상품인지 확인 (동일한 ID와 옵션)
       const existingItemIndex = prevItems.findIndex(
         cartItem =>
-          cartItem.id === item.id &&
-          JSON.stringify(cartItem.options) === JSON.stringify(item.options),
+          cartItem.id === newItem.id &&
+          JSON.stringify(cartItem.options) === JSON.stringify(newItem.options),
       );
 
       if (existingItemIndex > -1) {
-        // 이미 있는 상품이면 수량만 증가
         const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + item.quantity,
-          totalPrice:
-            updatedItems[existingItemIndex].totalPrice + item.totalPrice,
-        };
+        const existingItem = updatedItems[existingItemIndex];
+        existingItem.quantity += newItem.quantity;
+        existingItem.totalPrice += newItem.totalPrice;
         return updatedItems;
       } else {
-        // 새로운 상품이면 추가
-        return [...prevItems, item];
+        return [...prevItems, newItem];
       }
     });
-  };
+  }, []);
 
-  const removeFromCart = (id, options) => {
+  const removeItem = useCallback((itemId) => {
+    setCartItems(prevItems => {
+        const itemIndexToRemove = prevItems.findIndex(item => item.id === itemId);
+        if (itemIndexToRemove > -1) {
+            const newItems = [...prevItems];
+            newItems.splice(itemIndexToRemove, 1);
+            return newItems;
+        }
+        return prevItems;
+    });
+  }, []);
+
+  const removeFromCart = useCallback((id, options) => {
     setCartItems(prevItems =>
       prevItems.filter(
         item =>
@@ -41,9 +68,9 @@ export const CartProvider = ({children}) => {
           ),
       ),
     );
-  };
+  }, []);
 
-  const updateQuantity = (id, options, newQuantity) => {
+  const updateQuantity = useCallback((id, options, newQuantity) => {
     setCartItems(prevItems =>
       prevItems.map(item =>
         item.id === id &&
@@ -54,13 +81,13 @@ export const CartProvider = ({children}) => {
               totalPrice: (item.price || 0) * newQuantity,
             }
           : item,
-      ),
+      ).filter(item => item.quantity > 0) // 수량이 0이 되면 제거
     );
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
-  };
+  }, []);
 
   const getTotalPrice = () => {
     return cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -71,7 +98,8 @@ export const CartProvider = ({children}) => {
       value={{
         cartItems,
         addToCart,
-        removeFromCart,
+        removeItem, // VoiceContext용
+        removeFromCart, // UI용
         updateQuantity,
         clearCart,
         getTotalPrice,
