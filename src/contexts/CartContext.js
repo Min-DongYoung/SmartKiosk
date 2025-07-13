@@ -6,26 +6,45 @@ export const CartContext = createContext();
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
 
-  const addToCart = useCallback((itemFromVoice) => {
-    const menuItem = findMenuItem(itemFromVoice.name);
-    if (!menuItem) {
-      console.warn(`메뉴를 찾을 수 없음: ${itemFromVoice.name}`);
-      return;
-    }
+  const addToCart = useCallback((item) => {
+    // MenuDetailScreen에서 오는 경우와 음성에서 오는 경우를 구분
+    let newItem;
+    
+    if (item.options && typeof item.options === 'object' && !Array.isArray(item.options)) {
+      // MenuDetailScreen에서 온 경우 (options가 객체)
+      newItem = {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        options: item.options,
+        totalPrice: item.totalPrice,
+        category: item.category,
+        description: item.description,
+        image: item.image
+      };
+    } else {
+      // 음성에서 온 경우 (기존 로직)
+      const menuItem = findMenuItem(item.name);
+      if (!menuItem) {
+        console.warn(`메뉴를 찾을 수 없음: ${item.name}`);
+        return;
+      }
 
-    const price = calculatePrice(menuItem, itemFromVoice.size, itemFromVoice.options);
-    const newItem = {
-      id: menuItem.id,
-      name: menuItem.name,
-      price: price,
-      quantity: itemFromVoice.quantity || 1,
-      options: {
-        size: itemFromVoice.size || 'medium',
-        temperature: itemFromVoice.temperature,
-        extras: itemFromVoice.options || [],
-      },
-      totalPrice: price * (itemFromVoice.quantity || 1),
-    };
+      const price = calculatePrice(menuItem, item.size, item.options);
+      newItem = {
+        id: menuItem.id,
+        name: menuItem.name,
+        price: price,
+        quantity: item.quantity || 1,
+        options: {
+          size: item.size || 'medium',
+          temperature: item.temperature,
+          extras: item.options || [],
+        },
+        totalPrice: price * (item.quantity || 1),
+      };
+    }
 
     setCartItems(prevItems => {
       const existingItemIndex = prevItems.findIndex(
@@ -85,6 +104,19 @@ export const CartProvider = ({ children }) => {
     );
   }, []);
 
+  const updateCartItem = useCallback((originalItem, updatedItem) => {
+    setCartItems(prevItems =>
+      prevItems.map(item => {
+        // 원래 아이템과 id + options가 일치하는 경우 업데이트
+        if (item.id === originalItem.id && 
+            JSON.stringify(item.options) === JSON.stringify(originalItem.options)) {
+          return { ...updatedItem };
+        }
+        return item;
+      })
+    );
+  }, []);
+
   const clearCart = useCallback(() => {
     setCartItems([]);
   }, []);
@@ -101,6 +133,7 @@ export const CartProvider = ({ children }) => {
         removeItem, // VoiceContext용
         removeFromCart, // UI용
         updateQuantity,
+        updateCartItem,
         clearCart,
         getTotalPrice,
       }}>

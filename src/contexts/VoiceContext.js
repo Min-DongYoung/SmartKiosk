@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import { processVoiceWithGemini, getRecommendations } from '../services/geminiService';
 import { CartContext } from './CartContext';
 import { navigate } from '../navigation/navigationService';
+import { findMenuItem } from '../data/menuData';
 
 export const VoiceContext = createContext();
 
@@ -178,14 +179,29 @@ export const VoiceProvider = ({ children }) => {
     switch (result.action) {
       case 'order':
         if (result.items && result.items.length > 0) {
-          result.items.forEach(item => addToCart(item));
-          if (result.autoConfirm) {
-            setSessionState('continuous');
-            speak('추가 주문이 있으신가요?');
-          } else {
-            setSessionState('waiting_confirm');
-            speak('주문하시려면 "확인"이라고 말씀해주세요.');
+          const firstItem = result.items[0];
+          
+          // 실제 메뉴 데이터에서 아이템 찾기
+          const menuItem = findMenuItem(firstItem.name);
+          if (!menuItem) {
+            console.warn(`메뉴를 찾을 수 없음: ${firstItem.name}`);
+            speak('죄송합니다. 해당 메뉴를 찾을 수 없습니다.');
+            return;
           }
+          
+          // MenuDetailScreen으로 이동하여 옵션 확인
+          navigate('MenuDetail', {
+            item: menuItem, // 실제 메뉴 데이터 사용
+            fromVoice: true,    // 음성 안내용
+            fromCart: false,    // Cart에서 온 것이 아님
+            fromMenuList: false, // MenuList에서 온 것이 아님 (Home에서 음성으로)
+            existingOptions: {
+              size: firstItem.size || 'medium',
+              temperature: firstItem.temperature || 'iced'
+            },
+            existingQuantity: firstItem.quantity || 1
+          });
+          setSessionState('reviewing_order');
         }
         break;
       
@@ -287,8 +303,9 @@ export const VoiceProvider = ({ children }) => {
     clearRecognizedText,
     endSession,
     quickCommand,
-    getSessionInfo
-  }), [isListening, isProcessing, recognizedText, conversationHistory, error, sessionActive, sessionState, pendingOrders, startListening, stopListening, processCommand, clearRecognizedText, endSession]);
+    getSessionInfo,
+    speak
+  }), [isListening, isProcessing, recognizedText, conversationHistory, error, sessionActive, sessionState, pendingOrders, startListening, stopListening, processCommand, clearRecognizedText, endSession, speak]);
 
   return (
     <VoiceContext.Provider value={value}>

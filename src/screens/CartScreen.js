@@ -8,10 +8,13 @@ import {
   Alert,
 } from 'react-native';
 import {CartContext} from '../contexts/CartContext';
+import {useVoice} from '../contexts/VoiceContext';
+import {findMenuItem} from '../data/menuData';
 
 const CartScreen = ({navigation}) => {
   const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} =
     useContext(CartContext);
+  const {endSession} = useVoice();
 
   const removeItem = itemToRemove => {
     Alert.alert('삭제 확인', '이 항목을 장바구니에서 삭제하시겠습니까?', [
@@ -42,6 +45,7 @@ const CartScreen = ({navigation}) => {
             // 결제 로직
             Alert.alert('주문 완료', '주문이 접수되었습니다!');
             clearCart(); // 장바구니 비우기
+            endSession(); // 음성 세션 종료
             navigation.navigate('Home');
           },
         },
@@ -49,32 +53,57 @@ const CartScreen = ({navigation}) => {
     );
   };
 
+  const handleItemPress = (item) => {
+    // 실제 menu data에서 item 찾기
+    const menuItem = findMenuItem(item.name);
+    if (!menuItem) {
+      Alert.alert('오류', '메뉴 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    navigation.navigate('MenuDetail', {
+      item: menuItem, // 실제 menu data 사용 (options 포함)
+      fromCart: true,
+      originalCartItem: item,
+      existingOptions: item.options,
+      existingQuantity: item.quantity
+    });
+  };
+
   const renderCartItem = ({item}) => (
-    <View style={styles.cartItem}>
+    <TouchableOpacity 
+      style={styles.cartItem}
+      onPress={() => handleItemPress(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemOptions}>
-          {item.options.size && `사이즈: ${item.options.size}`}
-          {item.options.temperature && `, ${item.options.temperature}`}
+          {item.options.size && `사이즈: ${item.options.size === 'small' ? '작은' : item.options.size === 'medium' ? '보통' : '큰'}`}
+          {item.options.temperature && `, ${item.options.temperature === 'hot' ? '따뜻한' : '차가운'}`}
+          {item.options.extras && item.options.extras.length > 0 && 
+            `, 옵션: ${item.options.extras.join(', ')}`}
         </Text>
         <View style={styles.quantityControls}>
           <TouchableOpacity
             style={styles.quantityButton}
-            onPress={() =>
+            onPress={(e) => {
+              e.stopPropagation();
               updateQuantity(
                 item.id,
                 item.options,
                 Math.max(1, item.quantity - 1),
-              )
-            }>
+              );
+            }}>
             <Text style={styles.quantityButtonText}>-</Text>
           </TouchableOpacity>
           <Text style={styles.itemQuantity}>{item.quantity}개</Text>
           <TouchableOpacity
             style={styles.quantityButton}
-            onPress={() =>
-              updateQuantity(item.id, item.options, item.quantity + 1)
-            }>
+            onPress={(e) => {
+              e.stopPropagation();
+              updateQuantity(item.id, item.options, item.quantity + 1);
+            }}>
             <Text style={styles.quantityButtonText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -85,11 +114,14 @@ const CartScreen = ({navigation}) => {
         </Text>
         <TouchableOpacity
           style={styles.removeButton}
-          onPress={() => removeItem(item)}>
+          onPress={(e) => {
+            e.stopPropagation();
+            removeItem(item);
+          }}>
           <Text style={styles.removeButtonText}>삭제</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (

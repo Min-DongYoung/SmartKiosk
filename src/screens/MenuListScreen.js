@@ -14,7 +14,10 @@ const MenuListScreen = ({navigation}) => {
   const renderMenuItem = ({item}) => (
     <TouchableOpacity
       style={styles.menuItem}
-      onPress={() => navigation.navigate('MenuDetail', {item})}>
+      onPress={() => navigation.navigate('MenuDetail', {
+        item,
+        fromMenuList: true
+      })}>
       <Image source={{uri: item.image}} style={styles.menuImage} />
       <View style={styles.menuInfo}>
         <Text style={styles.menuName}>{item.name}</Text>
@@ -27,12 +30,13 @@ const MenuListScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>메뉴 선택</Text>
         <TouchableOpacity
           style={styles.cartButton}
           onPress={() => navigation.navigate('Cart')}>
           <Text style={styles.cartButtonText}>장바구니</Text>
         </TouchableOpacity>
+        <Text style={styles.title}>메뉴 선택</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <FlatList
@@ -62,6 +66,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 80, // cartButton과 같은 너비로 균형 맞춤
   },
   cartButton: {
     backgroundColor: '#007AFF',

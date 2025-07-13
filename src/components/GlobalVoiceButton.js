@@ -16,20 +16,14 @@ const GlobalVoiceButton = () => {
     isListening, 
     isProcessing, 
     recognizedText, 
-    sessionActive,
-    sessionState,
-    pendingOrders,
     startListening, 
     stopListening,
     processCommand,
-    clearRecognizedText,
-    getSessionInfo,
-    quickCommand
+    clearRecognizedText
   } = useVoice();
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const pendingBadgeAnim = useRef(new Animated.Value(0)).current;
   const processedTextRef = useRef('');
 
   // 펄스 애니메이션
@@ -60,23 +54,6 @@ const GlobalVoiceButton = () => {
     }
   }, [isListening, pulseAnim]);
 
-  // 대기 주문 배지 애니메이션
-  useEffect(() => {
-    if (pendingOrders.length > 0) {
-      Animated.spring(pendingBadgeAnim, {
-        toValue: 1,
-        tension: 40,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(pendingBadgeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [pendingOrders, pendingBadgeAnim]);
 
   // 텍스트 페이드 애니메이션
   useEffect(() => {
@@ -126,64 +103,21 @@ const GlobalVoiceButton = () => {
     if (isProcessing) return '처리 중...';
     if (isListening) return '듣고 있습니다...';
     if (recognizedText) return recognizedText;
-    
-    // 세션 상태별 메시지
-    switch (sessionState) {
-      case 'waiting_confirm':
-        return '확인을 기다리고 있습니다';
-      case 'continuous':
-        return '추가 주문을 받고 있습니다';
-      default:
-        return '';
-    }
-  }, [isProcessing, isListening, recognizedText, sessionState]);
+    return '';
+  }, [isProcessing, isListening, recognizedText]);
 
   const getButtonColor = useCallback(() => {
-    if (isProcessing) return '#FF9800'; // 주황
-    if (isListening) return '#f44336'; // 빨강
-    if (sessionState === 'waiting_confirm') return '#FFC107'; // 노랑
-    if (sessionState === 'continuous') return '#4CAF50'; // 초록
-    if (sessionActive) return '#2196F3'; // 파랑
-    return '#757575'; // 회색
-  }, [isProcessing, isListening, sessionActive, sessionState]);
+    if (isProcessing) return '#757575'; // 회색 (처리중, 입력 불가)
+    if (isListening) return '#f44336';  // 빨강 (인식중)
+    return '#2196F3';                   // 파랑 (기본, 입력 가능)
+  }, [isProcessing, isListening]);
 
   const getButtonIcon = useCallback(() => {
-    if (sessionState === 'waiting_confirm') return 'help-outline';
-    if (sessionState === 'continuous') return 'add-circle-outline';
-    if (isListening) return 'mic';
-    if (sessionActive) return 'mic-external-on';
-    return 'mic-none';
-  }, [isListening, sessionActive, sessionState]);
+    if (isListening) return 'mic';      // 인식중
+    return 'mic-none';                  // 기본/처리중
+  }, [isListening]);
 
-  // 빠른 액션 버튼들 렌더링
-  const renderQuickActions = () => {
-    if (!sessionActive || sessionState !== 'continuous') return null;
-    
-    return (
-      <View style={styles.quickActionsContainer}>
-        <TouchableOpacity
-          style={[styles.quickAction, styles.confirmAction]}
-          onPress={() => quickCommand('네, 맞습니다')}
-        >
-          <Icon name="check" size={20} color="white" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.quickAction, styles.cancelAction]}
-          onPress={() => quickCommand('취소해주세요')}
-        >
-          <Icon name="close" size={20} color="white" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.quickAction, styles.completeAction]}
-          onPress={() => quickCommand('주문 완료할게요')}
-        >
-          <Icon name="shopping-cart" size={20} color="white" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  // 빠른 액션 버튼들 제거 - 단순화
 
   return (
     <>
@@ -209,36 +143,14 @@ const GlobalVoiceButton = () => {
           ) : (
             <Icon 
               name={getButtonIcon()} 
-              size={30} 
+              size={38} 
               color="white" 
             />
           )}
         </TouchableOpacity>
         
-        {pendingOrders && pendingOrders.length > 0 && (
-          <Animated.View 
-            style={[
-              styles.badge,
-              {
-                transform: [{ scale: pendingBadgeAnim }],
-              }
-            ]}
-          >
-            <Text style={styles.badgeText}>{pendingOrders.length}</Text>
-          </Animated.View>
-        )}
-        
-        {/* 세션 상태 인디케이터 */}
-        {sessionActive && !isListening && !isProcessing && (
-          <View style={[
-            styles.sessionIndicator,
-            { backgroundColor: getSessionStateColor() }
-          ]} />
-        )}
+        {/* 복잡한 상태 인디케이터들 제거 */}
       </Animated.View>
-
-      {/* 빠른 액션 버튼들 */}
-      {renderQuickActions()}
 
       {/* 상태 메시지 */}
       {getStatusMessage() !== '' && (
@@ -252,37 +164,24 @@ const GlobalVoiceButton = () => {
           <Text style={styles.statusText}>
             {getStatusMessage()}
           </Text>
-          
-          {pendingOrders && pendingOrders.length > 0 && (
-            <Text style={styles.pendingText}>
-              대기중: {pendingOrders.map(o => o.summary).join(', ')}
-            </Text>
-          )}
         </Animated.View>
       )}
     </>
   );
   
-  function getSessionStateColor() {
-    switch (sessionState) {
-      case 'waiting_confirm': return '#FFC107';
-      case 'continuous': return '#4CAF50';
-      default: return '#2196F3';
-    }
-  }
 };
 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 30,
-    right: 30,
+    top: 50,
+    right: 20,
     zIndex: 1000,
   },
   button: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 75,
+    height: 75,
+    borderRadius: 37.5,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -319,7 +218,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     position: 'absolute',
-    bottom: 100,
+    top: 140,
     left: 20,
     right: 20,
     backgroundColor: 'rgba(0,0,0,0.9)',

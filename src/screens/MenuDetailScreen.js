@@ -1,4 +1,4 @@
-import React, {useState, useContext} from 'react';
+import React, {useState, useContext, useLayoutEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,28 +8,69 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import {CartContext} from '../contexts/CartContext';
+import {useVoice} from '../contexts/VoiceContext';
 
 const MenuDetailScreen = ({route, navigation}) => {
-  const {item} = route.params;
-  const {addToCart} = useContext(CartContext);
+  const {item, fromCart, fromMenuList, fromVoice, existingOptions, existingQuantity, originalCartItem} = route.params || {};
+  const {addToCart, updateCartItem} = useContext(CartContext);
+  const {speak} = useVoice();
 
-  const [quantity, setQuantity] = useState(1);
+  // 기존 옵션이 있으면 사용, 없으면 기본값 설정
+  const [quantity, setQuantity] = useState(existingQuantity || 1);
   const [selectedOptions, setSelectedOptions] = useState(() => {
+    if (existingOptions) {
+      return existingOptions;
+    }
+    
     const initialSize =
-      item.options.size && item.options.size.includes('medium')
+      item.options?.size && item.options.size.includes('medium')
         ? 'medium'
-        : item.options.size
+        : item.options?.size
         ? item.options.size[0]
         : null;
-    const initialTemperature = item.options.temperature
+    const initialTemperature = item.options?.temperature
       ? item.options.temperature[0]
       : null;
     return {
       size: initialSize,
       temperature: initialTemperature,
+      extras: [],
     };
   });
+
+  // 헤더 설정 및 뒤로가기 처리
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity 
+          onPress={handleBackPress}
+          style={{ marginLeft: 10 }}
+        >
+          <Icon name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, handleBackPress]);
+
+  // 음성 주문일 경우 안내 메시지 출력
+  React.useEffect(() => {
+    if (fromVoice) {
+      speak(`${item.name} 옵션을 확인하세요. 원하시는 옵션을 선택하신 후 장바구니에 담아주세요.`);
+    }
+  }, [fromVoice, item.name, speak]);
+
+  const handleBackPress = useCallback(() => {
+    if (fromCart) {
+      navigation.navigate('Cart');
+    } else if (fromMenuList) {
+      navigation.navigate('MenuList');
+    } else {
+      // fromVoice이거나 기타 경우 - Home으로
+      navigation.navigate('Home');
+    }
+  }, [fromCart, fromMenuList, navigation]);
 
   const calculateAdjustedPrice = () => {
     let adjustedPrice = item.price;
@@ -46,15 +87,37 @@ const MenuDetailScreen = ({route, navigation}) => {
     const cartItem = {
       id: item.id,
       name: item.name,
-      price: adjustedPrice, // 기본 가격 대신 조정된 가격 사용
+      price: adjustedPrice,
       quantity: quantity,
       options: selectedOptions,
       totalPrice: adjustedPrice * quantity,
+      category: item.category,
+      description: item.description,
+      image: item.image
     };
 
-    addToCart(cartItem);
-    Alert.alert('장바구니', `${item.name}이(가) 장바구니에 추가되었습니다.`);
-    navigation.navigate('MenuList');
+    if (fromCart && originalCartItem) {
+      // Cart에서 온 경우 기존 아이템 수정
+      updateCartItem(originalCartItem, cartItem);
+      Alert.alert('수정 완료', `${item.name} 옵션이 수정되었습니다.`);
+      navigation.navigate('Cart');
+    } else {
+      // 새로운 아이템 추가
+      addToCart(cartItem);
+      const message = `${item.name}이(가) 장바구니에 추가되었습니다.`;
+      Alert.alert('장바구니', message);
+      
+      if (fromVoice) {
+        speak(message + ' 추가 주문하시겠어요?');
+      }
+      
+      // 경로에 따른 네비게이션
+      if (fromMenuList) {
+        navigation.navigate('MenuList');
+      } else {
+        navigation.navigate('Home');
+      }
+    }
   };
 
   return (
@@ -62,13 +125,22 @@ const MenuDetailScreen = ({route, navigation}) => {
       <Image source={{uri: item.image}} style={styles.image} />
 
       <View style={styles.content}>
+        {fromVoice && (
+          <View style={styles.voiceNotice}>
+            <Icon name="mic" size={20} color="#007AFF" />
+            <Text style={styles.voiceNoticeText}>
+              음성으로 주문하신 메뉴입니다. 옵션을 확인해주세요.
+            </Text>
+          </View>
+        )}
+        
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.price}>
           {calculateAdjustedPrice().toLocaleString()}원
         </Text>
 
         {/* 옵션 선택 */}
-        {item.options.size && (
+        {item.options?.size && (
           <View style={styles.optionSection}>
             <Text style={styles.optionTitle}>사이즈</Text>
             <View style={styles.optionButtons}>
@@ -99,7 +171,7 @@ const MenuDetailScreen = ({route, navigation}) => {
           </View>
         )}
 
-        {item.options.temperature && (
+        {item.options?.temperature && (
           <View style={styles.optionSection}>
             <Text style={styles.optionTitle}>온도</Text>
             <View style={styles.optionButtons}>
@@ -156,7 +228,9 @@ const MenuDetailScreen = ({route, navigation}) => {
 
         {/* 버튼 */}
         <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
-          <Text style={styles.addButtonText}>장바구니에 담기</Text>
+          <Text style={styles.addButtonText}>
+            {fromCart ? '옵션 수정 완료' : '장바구니에 담기'}
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -274,6 +348,22 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  voiceNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeft: 4,
+    borderLeftColor: '#007AFF',
+  },
+  voiceNoticeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
   },
 });
 

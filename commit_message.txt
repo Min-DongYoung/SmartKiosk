@@ -1,5 +1,22 @@
-docs: Update README.md with API key setup and Gemini integration details
+feat: Implement voice guidance and refactor app structure
 
-Updated README.md to reflect the new API key management using src/config.js and
-to highlight the integration of Google Gemini API (gemini-2.0-flash model)
-for intelligent voice guidance. Also updated the development roadmap.
+This commit introduces significant enhancements and refactoring:
+
+- **Voice Guidance System:**
+  - Added `RecommendationModal.js` for displaying voice recommendations.
+  - Integrated `GlobalVoiceButton.js` for voice interaction.
+  - Refactored `VoiceContext.js` to support new voice features.
+  - Updated `geminiService.js` for improved Gemini API integration.
+
+- **Navigation and Utilities:**
+  - Introduced `navigationService.js` for centralized navigation management.
+  - Added `debugHelper.js` for debugging utilities.
+  - Included `nativeModulePatch.js` for native module compatibility.
+
+- **Configuration and Data:**
+  - Modified `src/config.js` for new configuration settings.
+  - Updated `src/data/menuData.js` for enhanced menu data handling.
+
+- **Core App Updates:**
+  - Updated `App.js`, `index.js`, `AppNavigator.js`, `CartContext.js`, `menuHelper.js` to integrate new features and refactored components.
+  - Modified `android/app/src/main/AndroidManifest.xml` for necessary Android permissions/configurations.
