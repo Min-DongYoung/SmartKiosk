@@ -6,14 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import {CartContext} from '../contexts/CartContext';
 import {useVoice} from '../contexts/VoiceContext';
 import {findMenuItem} from '../data/menuData';
+import { API_BASE_URL } from '../config';
 
 const CartScreen = ({navigation}) => {
-  const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} =
-    useContext(CartContext);
+  const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} = useContext(CartContext);
   const {endSession} = useVoice();
 
   const removeItem = itemToRemove => {
@@ -76,6 +78,7 @@ const CartScreen = ({navigation}) => {
       onPress={() => handleItemPress(item)}
       activeOpacity={0.7}
     >
+      <Image source={{uri: `${API_BASE_URL.replace('/api', '')}/uploads/${item.imageUrl}`}} style={styles.cartItemImage} />
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemOptions}>
@@ -95,7 +98,7 @@ const CartScreen = ({navigation}) => {
                 Math.max(1, item.quantity - 1),
               );
             }}>
-            <Text style={styles.quantityButtonText}>-</Text>
+            <Icon name="remove" size={20} color="#333" />
           </TouchableOpacity>
           <Text style={styles.itemQuantity}>{item.quantity}개</Text>
           <TouchableOpacity
@@ -104,13 +107,13 @@ const CartScreen = ({navigation}) => {
               e.stopPropagation();
               updateQuantity(item.id, item.options, item.quantity + 1);
             }}>
-            <Text style={styles.quantityButtonText}>+</Text>
+            <Icon name="add" size={20} color="#333" />
           </TouchableOpacity>
         </View>
       </View>
       <View style={styles.itemPriceSection}>
         <Text style={styles.itemPrice}>
-          {item.totalPrice.toLocaleString()}원
+          {(item.price * item.quantity).toLocaleString()}원
         </Text>
         <TouchableOpacity
           style={styles.removeButton}
@@ -118,7 +121,7 @@ const CartScreen = ({navigation}) => {
             e.stopPropagation();
             removeItem(item);
           }}>
-          <Text style={styles.removeButtonText}>삭제</Text>
+          <Icon name="delete" size={24} color="#FF4444" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -128,7 +131,8 @@ const CartScreen = ({navigation}) => {
     <View style={styles.container}>
       {cartItems.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>장바구니가 비어있습니다</Text>
+          <Icon name="shopping-cart" size={80} color="#ccc" style={styles.emptyCartIcon} />
+          <Text style={styles.emptyText}>장바구니가 비어있습니다.</Text>
           <TouchableOpacity
             style={styles.continueButton}
             onPress={() => navigation.navigate('MenuList')}>
@@ -146,7 +150,7 @@ const CartScreen = ({navigation}) => {
 
           <View style={styles.footer}>
             <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>총 금액</Text>
+              <Text style={styles.totalLabel}>총 결제 금액</Text>
               <Text style={styles.totalPrice}>
                 {getTotalPrice().toLocaleString()}원
               </Text>
@@ -168,61 +172,87 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    padding: 20,
-    backgroundColor: 'white',
-    elevation: 2,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
   cartList: {
     padding: 15,
   },
   cartItem: {
     backgroundColor: 'white',
-    padding: 20,
+    padding: 15,
     marginBottom: 10,
     borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    elevation: 2,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  cartItemImage: {
+    width: 75,
+    height: 75,
+    borderRadius: 8,
+    marginRight: 10,
+    resizeMode: 'contain',
   },
   itemInfo: {
-    flex: 1,
   },
   itemName: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
-    color: 'black',
+    color: '#333',
   },
   itemOptions: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
+    fontSize: 13,
+    color: '#777',
+    marginBottom: 8,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    alignSelf: 'flex-start'
+  },
+  quantityButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 15,
+    backgroundColor: '#e8e8e8',
+  },
+  quantityButtonText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: 'bold',
   },
   itemQuantity: {
-    fontSize: 14,
-    color: '#666',
-    marginHorizontal: 10,
+    fontSize: 15,
+    color: '#333',
+    marginHorizontal: 5, // 변경: 마진 조정
+    fontWeight: 'bold',
+    minWidth: 30, // 추가: 최소 너비 설정
+    textAlign: 'center', // 추가: 텍스트 중앙 정렬
   },
   itemPriceSection: {
     alignItems: 'flex-end',
+    minWidth: 120, // 가격 텍스트가 길어져도 공간을 확보하기 위한 최소 너비
   },
   itemPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#4CAF50',
     marginBottom: 10,
   },
   removeButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#ff4444',
-    borderRadius: 15,
+    padding: 5,
+    borderRadius: 5,
   },
   removeButtonText: {
     color: '#ff4444',
@@ -232,17 +262,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  emptyCartIcon: {
+    marginBottom: 20,
   },
   emptyText: {
     fontSize: 18,
     color: '#666',
     marginBottom: 20,
+    fontWeight: 'bold',
   },
   continueButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   continueButtonText: {
     color: 'white',
@@ -252,50 +292,46 @@ const styles = StyleSheet.create({
   footer: {
     backgroundColor: 'white',
     padding: 20,
-    elevation: 5,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   totalSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 15,
+    alignItems: 'center',
   },
   totalLabel: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#333',
   },
   totalPrice: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#4CAF50',
   },
   checkoutButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FFC107',
     paddingVertical: 18,
     borderRadius: 30,
     alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   checkoutButtonText: {
-    color: 'white',
+    color: '#333',
     fontSize: 20,
     fontWeight: 'bold',
   },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 5,
-  },
-  quantityButton: {
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 15,
-  },
-  quantityButtonText: {
-    fontSize: 15,
-    color: 'black',
-}});
+});
 
 export default CartScreen;

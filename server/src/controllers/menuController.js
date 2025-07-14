@@ -3,19 +3,13 @@ import { uploadImage } from '../utils/imageUpload.js';
 
 export const getAllMenus = async (req, res) => {
   try {
-    const { available = true } = req.query;
-    const filter = available === 'all' ? {} : { isAvailable: available === 'true' };
-    
-    console.log('getAllMenus - 적용된 필터:', filter); // 로그 추가
-
-    const menus = await Menu.find(filter)
-      .sort({ category: 1, name: 1 });
-    
-    console.log('getAllMenus - 조회된 메뉴 수:', menus.length); // 로그 추가
+    // 모든 필터링 및 정렬 제거, 단순 조회
+    const menus = await Menu.find({})
+      .lean(); // Mongoose 문서를 일반 JS 객체로 변환
 
     res.json({
       success: true,
-      data: menus,
+      data: JSON.parse(JSON.stringify(menus)), // 강제로 JSON 직렬화/역직렬화
       count: menus.length
     });
   } catch (error) {
@@ -169,7 +163,7 @@ export const deleteMenu = async (req, res) => {
     if (!menu) {
       return res.status(404).json({ 
         success: false, 
-        error: '메뉴를 찾을 수 없습니다' 
+        error: '메뉴가 삭제되었습니다' 
       });
     }
     

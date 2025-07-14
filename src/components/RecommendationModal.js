@@ -31,7 +31,7 @@ const RecommendationModal = ({ navigation, route }) => {
 
   return (
     // Modal 컴포넌트 대신 View를 사용하여 네비게이션 스택의 투명한 화면으로 작동합니다.
-    <TouchableOpacity 
+    <TouchableOpacity
         style={styles.centeredView}
         activeOpacity={1}
         onPressOut={() => navigation.goBack()} // 배경 클릭 시 닫기
@@ -39,8 +39,8 @@ const RecommendationModal = ({ navigation, route }) => {
         <View style={styles.modalView}>
           <View style={styles.header}>
             <Text style={styles.modalTitle}>이런 메뉴는 어떠세요?</Text>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Icon name="close" size={24} color="#333" />
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+              <Icon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -48,6 +48,7 @@ const RecommendationModal = ({ navigation, route }) => {
             renderItem={renderItem}
             keyExtractor={(item, index) => index.toString()}
             style={styles.list}
+            contentContainerStyle={styles.listContent}
           />
         </View>
     </TouchableOpacity>
@@ -71,11 +72,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   header: {
     width: '100%',
@@ -83,14 +84,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 10,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
   },
+  closeButton: {
+    padding: 5,
+  },
   list: {
     width: '100%',
+  },
+  listContent: {
+    paddingBottom: 10,
   },
   itemContainer: {
     flexDirection: 'row',
@@ -98,10 +108,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
   itemTextContainer: {
     flex: 1,
+    marginRight: 10,
   },
   itemName: {
     fontSize: 18,

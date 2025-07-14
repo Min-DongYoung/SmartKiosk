@@ -108,7 +108,7 @@ export const CartProvider = ({ children }) => {
       console.error('주문 생성 오류:', error);
       Alert.alert(
         '주문 실패',
-        error.error || '주문을 처리할 수 없습니다. 다시 시도해주세요.'
+        error.error || '다시 시도해주세요.'
       );
       throw error;
     } finally {
@@ -152,19 +152,27 @@ export const CartProvider = ({ children }) => {
             }
           : item,
       ).filter(item => item.quantity > 0)
-    );s
+    );
   }, []);
 
   const updateCartItem = useCallback((originalItem, updatedItem) => {
-    setCartItems(prevItems =>
-      prevItems.map(item => {
+    setCartItems(prevItems => {
+      const sortedOriginalItemOptions = {
+        ...originalItem.options,
+        extras: originalItem.options.extras ? [...originalItem.options.extras].sort() : [],
+      };
+      return prevItems.map(item => {
+        const sortedCartItemOptions = {
+          ...item.options,
+          extras: item.options.extras ? [...item.options.extras].sort() : [],
+        };
         if (item.id === originalItem.id && 
-            JSON.stringify(item.options) === JSON.stringify(originalItem.options)) {
+            JSON.stringify(sortedCartItemOptions) === JSON.stringify(sortedOriginalItemOptions)) {
           return { ...updatedItem };
         }
         return item;
-      })
-    );s
+      });
+    });
   }, []);
 
   const clearCart = useCallback(() => {

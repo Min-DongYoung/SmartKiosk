@@ -1,6 +1,4 @@
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/api' 
-  : `http://${process.env.REACT_APP_HOST || 'localhost'}:${process.env.REACT_APP_PORT || '3000'}/api`;
+export const API_BASE_URL = '/api';
 
 // 유틸리티 함수들
 export const Utils = {
@@ -21,8 +19,9 @@ export const Utils = {
   },
 
   // 가격 포맷팅
-  formatPrice: (price: number) => {
-    return Utils.formatNumber(price) + '원';
+  formatPrice: (price: number | null | undefined) => {
+    const validPrice = (typeof price === 'number' && !isNaN(price)) ? price : 0;
+    return Utils.formatNumber(validPrice) + '원';
   },
 
   // 카테고리 한글 변환

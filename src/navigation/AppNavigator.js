@@ -79,14 +79,14 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   cartButton: {
     marginRight: 5,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 10, // 너비 확보를 위해 수평 여백 증가
     height: 40, // GlobalVoiceButton과 높이 통일
     borderRadius: 10,
     justifyContent: 'center', // 텍스트 수직 중앙 정렬
   },
   cartButtonText: {
-    color: 'white',
+    color: '#333',
     fontSize: 14,
     fontWeight: 'bold',
   },

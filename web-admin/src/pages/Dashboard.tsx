@@ -96,16 +96,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleNewOrder = (order: Order) => {
-    setRecentOrders(prev => [order, ...prev.slice(0, 4)]);
-    
-    setStats(prev => ({
-      ...prev,
-      todayOrders: prev.todayOrders + 1,
-      todayRevenue: prev.todayRevenue + order.totalAmount
-    }));
-  };
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold mb-6">실시간 대시보드</h1>
@@ -129,9 +119,9 @@ const Dashboard = () => {
             <CardTitle className="text-base text-gray-600">오늘 매출</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Utils.formatPrice(stats.todayRevenue)}</div>
+            <div className="text-2xl font-bold">{Utils.formatPrice(stats.todayRevenue ?? 0)}</div>
             <div className="text-sm text-gray-500 mt-1">
-              평균 주문: {Utils.formatPrice(stats.avgOrderValue)}
+              평균 주문: {Utils.formatPrice(stats.avgOrderValue ?? 0)}
             </div>
           </CardContent>
         </Card>

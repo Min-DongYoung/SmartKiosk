@@ -28,7 +28,7 @@ export const MenuProvider = ({ children }) => {
 
       const response = await menuService.getAllMenus(forceRefresh);
       
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         // 배열을 객체로 변환 (기존 코드 호환성)
         const menuObject = {};
         response.data.forEach(menu => {

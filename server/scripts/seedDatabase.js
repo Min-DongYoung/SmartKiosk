@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import Menu from '../src/models/Menu.js'; // 경로 수정
 import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: './.env' });
 
 // __dirname, __filename 대체
 import path from 'path';
@@ -13,7 +15,9 @@ const __dirname = path.dirname(__filename);
 
 async function seedDatabase() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smartkiosk');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smartkiosk', {
+      dbName: 'smartkiosk'
+    });
     console.log('MongoDB 연결 성공');
 
     // 기존 데이터 삭제
@@ -21,9 +25,7 @@ async function seedDatabase() {
     console.log('기존 메뉴 데이터 삭제 완료');
 
     /** 공통 편의 변수 */
-    const host = process.env.HOST || 'localhost';
-    const port = process.env.PORT || 3000;
-    const img = f => `http://${host}:${port}/uploads/${f}`;
+    const img = f => f;
 
     /** 메뉴 시드 */
     const menuData = [
@@ -354,10 +356,6 @@ async function seedDatabase() {
 
     const menus = await Menu.insertMany(menuData);
     console.log(`${menus.length}개의 메뉴 추가 완료`);
-
-    // 추가: 삽입된 메뉴를 바로 조회하여 확인
-    const allMenusInDb = await Menu.find({});
-    console.log(`데이터베이스에 현재 ${allMenusInDb.length}개의 메뉴가 있습니다.`);
 
     // KioskConfig 시딩 (필요하다면 주석 해제)
     // const kioskConfigData = {

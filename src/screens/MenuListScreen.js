@@ -21,6 +21,8 @@ const categories = [
   '디저트',
 ];
 
+import { API_BASE_URL } from '../config';
+
 const MenuListScreen = ({navigation}) => {
   const { menus, loading, error } = useMenu();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -29,7 +31,7 @@ const MenuListScreen = ({navigation}) => {
     <TouchableOpacity
       style={styles.menuItem}
       onPress={() => navigation.navigate('MenuDetail', {item, fromMenuList: true})}>
-      <Image source={{uri: item.imageUrl}} style={styles.menuImage} />
+      <Image source={{uri: `${API_BASE_URL.replace('/api', '')}/uploads/${item.imageUrl}`}} style={styles.menuImage} />
       <View style={styles.menuInfo}>
         <Text style={styles.menuName}>{item.name}</Text>
         <Text style={styles.menuCategory}>{item.category}</Text>
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
   },
   selectedCategoryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4CAF50', // Green color for selected category
   },
   categoryButtonText: {
     fontSize: 14,
@@ -180,6 +182,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 8,
     marginBottom: 10,
+    resizeMode: 'contain',
   },
   menuInfo: {
     flex: 1,
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
   menuPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#4CAF50', // Green color for price
   },
 });
 

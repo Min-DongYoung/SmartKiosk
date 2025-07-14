@@ -26,6 +26,7 @@ const io = new Server(server, {
       `http://${process.env.HOST}:${process.env.PORT}`,    // 관리자 웹
       `http://${process.env.HOST}:8081`,    // React Native Metro (Metro Bundler는 8081 고정)
       `http://${process.env.HOST}:19000`,   // Expo (Expo는 19000 고정)
+      'http://localhost:3001', // 웹 관리자 페이지가 다른 포트에서 실행될 경우
     ],
     credentials: true
   }
@@ -35,13 +36,19 @@ const io = new Server(server, {
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [
-      `http://${process.env.HOST}:${process.env.PORT}`,    // 관리자 웹
-      `http://${process.env.HOST}:8081`,    // React Native Metro
-      `http://${process.env.HOST}:19000`,   // Expo
-      // 개발 환경에서 localhost로 접근하는 경우를 위해 추가
-      `http://localhost:${process.env.PORT}`,
-      'http://localhost:8081',
-      'http://localhost:19000',
+      // 서버 자체의 출처 (클라이언트가 서버 포트로 직접 요청하는 경우)
+      `http://localhost:${process.env.PORT}`, // http://localhost:3000
+      `http://172.16.166.215:${process.env.PORT}`, // http://172.16.166.215:3000
+
+      // 웹 관리자 페이지의 출처
+      'http://localhost:3001', // 웹 관리자 (localhost)
+      'http://172.16.166.215:3001', // 웹 관리자 (PC LAN IP)
+
+      // React Native 앱의 출처 (Metro Bundler, Expo)
+      'http://localhost:8081', // Metro Bundler (localhost)
+      'http://localhost:19000', // Expo (localhost)
+      `http://172.16.166.215:8081`, // Metro Bundler (PC LAN IP)
+      `http://172.16.166.215:19000`, // Expo (PC LAN IP)
     ];
     
     // 개발 환경에서는 origin이 없는 경우도 허용
@@ -66,8 +73,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 mongoose.connect(process.env.MONGODB_URI || `mongodb://localhost:${process.env.MONGODB_PORT || 27017}/smartkiosk`, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  dbName: 'smartkiosk',
 })
-.then(() => console.log('MongoDB 연결 성공'))
+.then(() => {
+  console.log('MongoDB 연결 성공');
+  console.log('Server MongoDB URI:', process.env.MONGODB_URI || `mongodb://localhost:${process.env.MONGODB_PORT || 27017}/smartkiosk`);
+  console.log('Server MongoDB dbName:', 'smartkiosk');
+})
 .catch(err => console.error('MongoDB 연결 실패:', err));
 
 // WebSocket을 req 객체에 추가
@@ -140,7 +152,7 @@ app.use((err, req, res, next) => {
 
 // 서버 시작 (http.Server 사용)
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`서버가 포트 ${PORT}에서 실행중입니다`);
   console.log(`환경: ${process.env.NODE_ENV || 'development'}`);
   console.log(`WebSocket 활성화됨`);

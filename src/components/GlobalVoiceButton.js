@@ -12,16 +12,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useVoice } from '../contexts/VoiceContext';
 
 const GlobalVoiceButton = () => {
-  const { 
-    isListening, 
-    isProcessing, 
-    recognizedText, 
-    startListening, 
+  const {
+    isListening,
+    isProcessing,
+    recognizedText,
+    startListening,
     stopListening,
     processCommand,
     clearRecognizedText
   } = useVoice();
-  
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const processedTextRef = useRef('');
@@ -32,7 +32,7 @@ const GlobalVoiceButton = () => {
       const pulseAnimation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.3,
+            toValue: 1.15,
             duration: 1000,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
@@ -46,7 +46,7 @@ const GlobalVoiceButton = () => {
         ])
       );
       pulseAnimation.start();
-      
+
       return () => {
         pulseAnimation.stop();
         pulseAnim.setValue(1);
@@ -74,19 +74,19 @@ const GlobalVoiceButton = () => {
 
   // processCommand 호출 로직
   useEffect(() => {
-    if (recognizedText && 
-        !isListening && 
-        !isProcessing && 
+    if (recognizedText &&
+        !isListening &&
+        !isProcessing &&
         recognizedText !== processedTextRef.current) {
-      
+
       processedTextRef.current = recognizedText;
       processCommand(recognizedText);
-      
+
       const timer = setTimeout(() => {
         clearRecognizedText();
         processedTextRef.current = '';
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [recognizedText, isListening, isProcessing, processCommand, clearRecognizedText]);
@@ -108,8 +108,8 @@ const GlobalVoiceButton = () => {
 
   const getButtonColor = useCallback(() => {
     if (isProcessing) return '#757575'; // 회색 (처리중, 입력 불가)
-    if (isListening) return '#f44336';  // 빨강 (인식중)
-    return '#2196F3';                   // 파랑 (기본, 입력 가능)
+    if (isListening) return '#FF4444';  // 빨강 (인식중)
+    return '#4CAF50';                   // 초록 (기본, 입력 가능)
   }, [isProcessing, isListening]);
 
   const getButtonIcon = useCallback(() => {
@@ -117,14 +117,13 @@ const GlobalVoiceButton = () => {
     return 'mic-none';                  // 기본/처리중
   }, [isListening]);
 
-  // 빠른 액션 버튼들 제거 - 단순화
-
   return (
     <View style={styles.container}>
       <TouchableOpacity
         style={[
           styles.button,
-          { backgroundColor: getButtonColor() }
+          { backgroundColor: getButtonColor() },
+          isListening && { transform: [{ scale: pulseAnim }] } // 펄스 애니메이션 적용
         ]}
         onPress={handlePress}
         disabled={isProcessing}
@@ -133,17 +132,22 @@ const GlobalVoiceButton = () => {
         {isProcessing ? (
           <ActivityIndicator color="white" size="small" />
         ) : (
-          <Icon 
-            name={getButtonIcon()} 
-            size={24} 
-            color="white" 
+          <Icon
+            name={getButtonIcon()}
+            size={24}
+            color="white"
           />
         )}
         <Text style={styles.buttonText}>{getStatusMessage() || '음성으로 주문'}</Text>
       </TouchableOpacity>
+
+      {(recognizedText || isProcessing) && (
+        <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
+          <Text style={styles.statusText}>{getStatusMessage()}</Text>
+        </Animated.View>
+      )}
     </View>
   );
-  
 };
 
 const styles = StyleSheet.create({
@@ -153,35 +157,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    width: 200, // 너비 증가
-    height: 40,
-    borderRadius: 20,
+    width: 220, // 너비 증가
+    height: 40, // 높이 증가
+    borderRadius: 25, // 더 둥글게
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18, // 폰트 크기 증가
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 10,
   },
-  // 기존 나머지 스타일은 유지 (textContainer 등)
   textContainer: {
     position: 'absolute',
-    top: 140,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    padding: 15,
+    top: 60, // 버튼 아래에 위치
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 10,
-    maxHeight: 120,
+    maxWidth: '80%',
   },
   statusText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 22,
   },
 });
 

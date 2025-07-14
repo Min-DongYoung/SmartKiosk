@@ -11,6 +11,7 @@ import {
 import {CartContext} from '../contexts/CartContext';
 import {useVoice} from '../contexts/VoiceContext';
 import {useMenu} from '../contexts/MenuContext';
+import { API_BASE_URL } from '../config';
 
 const MenuDetailScreen = ({route, navigation}) => {
   const {item: initialItem, fromVoice, existingOptions, existingQuantity, fromCart, originalCartItem} = route.params;
@@ -19,7 +20,7 @@ const MenuDetailScreen = ({route, navigation}) => {
   const {findMenuItem, calculatePrice} = useMenu();
 
   const [item, setItem] = useState(initialItem);
-  const [selectedSize, setSelectedSize] = useState(existingOptions?.size || item.sizeOptions?.[0] || 'medium');
+  const [selectedSize, setSelectedSize] = useState(existingOptions?.size || (item.sizeOptions?.includes('medium') ? 'medium' : item.sizeOptions?.[0]) || 'medium');
   const [selectedTemperature, setSelectedTemperature] = useState(existingOptions?.temperature || item.temperatureOptions?.[0] || 'hot');
   const [selectedExtras, setSelectedExtras] = useState(existingOptions?.extras || []);
   const [quantity, setQuantity] = useState(existingQuantity || 1);
@@ -102,7 +103,7 @@ const MenuDetailScreen = ({route, navigation}) => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Image source={{uri: item.imageUrl}} style={styles.menuImage} />
+        <Image source={{uri: `${API_BASE_URL.replace('/api', '')}/uploads/${item.imageUrl}`}} style={styles.menuImage} />
         <View style={styles.detailsContainer}>
           <Text style={styles.menuName}>{item.name}</Text>
           <Text style={styles.menuDescription}>{item.description}</Text>
@@ -238,17 +239,19 @@ const styles = StyleSheet.create({
   },
   menuImage: {
     width: '100%',
-    height: 250,
-    resizeMode: 'cover',
+    height: 280, // 이미지 높이 증가
+    resizeMode: 'contain',
+    borderBottomLeftRadius: 20, // 하단 모서리 둥글게
+    borderBottomRightRadius: 20,
   },
   detailsContainer: {
     padding: 20,
   },
   menuName: {
-    fontSize: 28,
+    fontSize: 32, // 폰트 크기 증가
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: 'black',
+    marginBottom: 8,
+    color: '#333',
   },
   menuDescription: {
     fontSize: 16,
@@ -256,19 +259,27 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   menuPrice: {
-    fontSize: 24,
+    fontSize: 28, // 폰트 크기 증가
     fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 20,
+    color: '#4CAF50', // 가격 색상 변경
+    marginBottom: 25,
   },
   optionSection: {
     marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   optionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: 'black',
+    color: '#333',
   },
   optionsContainer: {
     flexDirection: 'row',
@@ -276,20 +287,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   optionButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: '#ddd',
-    backgroundColor: 'white',
+    backgroundColor: '#f0f0f0',
   },
   selectedOptionButton: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   optionButtonText: {
-    color: 'black',
+    color: '#333',
     fontSize: 16,
+    fontWeight: '500',
   },
   selectedOptionButtonText: {
     color: 'white',
@@ -299,29 +311,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   quantityButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityButtonText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: 'black',
+    color: '#333',
   },
   quantityText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginHorizontal: 20,
-    color: 'black',
+    color: '#333',
   },
   addToCartButtonContainer: {
     position: 'absolute',
@@ -333,15 +353,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
     elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   addToCartButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FFC107', // Amber color for button
     padding: 18,
     borderRadius: 30,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   addToCartButtonText: {
-    color: 'white',
+    color: '#333',
     fontSize: 18,
     fontWeight: 'bold',
   },

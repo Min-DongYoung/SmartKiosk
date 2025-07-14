@@ -1,20 +1,25 @@
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
-const HomeScreen = ({navigation}) => {
-  // navigation prop 추가
+const HomeScreen = ({ navigation }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>스마트 키오스크</Text>
-      <Text style={styles.subtitle}>음성과 터치로 주문하세요</Text>
+    <LinearGradient
+      colors={['#F8F8F8', '#FFFFFF']} // Pastel white gradient
+      style={styles.container}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>SmartKiosk</Text>
+        <Text style={styles.subtitle}>터치와 음성으로 편리하게 주문하세요</Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('MenuList')} // 네비게이션 추가
-      >
-        <Text style={styles.buttonText}>주문 시작</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('MenuList')}
+        >
+          <Text style={styles.buttonText}>주문 시작하기</Text>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -23,28 +28,48 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 8,
   },
   title: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
-    color: 'black',
+    color: '#333',
     marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#666',
-    marginBottom: 50,
+    marginBottom: 40,
+    textAlign: 'center',
+    lineHeight: 28,
   },
   button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 25,
+    backgroundColor: '#FFD700', // Gold color for button
+    paddingHorizontal: 50,
+    paddingVertical: 18,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 20,
+    color: '#333',
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });

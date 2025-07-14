@@ -24,11 +24,11 @@ export const menuService = {
       
       // 캐시 저장
       await AsyncStorage.setItem(MENU_CACHE_KEY, JSON.stringify({
-        data: response.data,
+        data: response,
         timestamp: Date.now()
       }));
 
-      return response.data;
+      return response;
     } catch (error) {
       // 오프라인 시 캐시 데이터 반환
       const cached = await AsyncStorage.getItem(MENU_CACHE_KEY);

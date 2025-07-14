@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Alert, AlertDescription } from '@/components/ui/alert';
-// import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { API, Utils } from '../lib/utils'; // 유틸리티 함수 임포트
+import { API, Utils, API_BASE_URL } from '../lib/utils';
 
 // 임시 UI 컴포넌트 (Shadcn UI 설치 전까지 사용)
 const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`bg-white rounded-lg shadow-md p-4 ${className}`}>{children}</div>;
@@ -43,10 +40,8 @@ const MenuManagement = () => {
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [currentEditingMenu, setCurrentEditingMenu] = useState<MenuItem | null>(null);
 
-  // 메뉴 데이터 로드
   useEffect(() => {
     fetchMenus();
-    // 5초마다 자동 새로고침
     const interval = setInterval(fetchMenus, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -64,7 +59,6 @@ const MenuManagement = () => {
     }
   };
 
-  // 품절 상태 토글
   const toggleAvailability = async (menuId: string, currentStatus: boolean) => {
     setPendingAction({ menuId, currentStatus });
     setShowConfirmDialog(true);
@@ -77,7 +71,6 @@ const MenuManagement = () => {
       const response = await API.patch(`/menu/${pendingAction.menuId}/availability`);
 
       if (response.success) {
-        // 즉시 UI 업데이트
         setMenus(menus.map((menu) => 
           menu._id === pendingAction.menuId 
             ? { ...menu, isAvailable: !menu.isAvailable } 
@@ -92,20 +85,8 @@ const MenuManagement = () => {
     }
   };
 
-  // 가격 수정
-  const updatePrice = async (menuId: string, newPrice: string) => {
-    try {
-      const response = await API.put(`/menu/${menuId}`, { price: parseInt(newPrice) });
+  
 
-      if (response.success) {
-        fetchMenus(); // 전체 새로고침
-      }
-    } catch (error) {
-      console.error('가격 변경 실패:', error);
-    }
-  };
-
-  // 추천 메뉴 토글 (tags 필드 사용)
   const toggleRecommended = async (menuId: string, currentTags: string[]) => {
     const isRecommended = currentTags?.includes('추천');
     const newTags = isRecommended 
@@ -154,21 +135,21 @@ const MenuManagement = () => {
     setCurrentEditingMenu(null);
   };
 
-  const submitMenu = async (event: React.FormEvent) => {
+  const submitMenu = async (event?: React.FormEvent) => {
+    if (!event) return;
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const formData: Partial<MenuItem> = {
-      name: form.menuName.value,
-      category: form.menuCategory.value,
-      price: parseInt(form.menuPrice.value),
-      description: form.menuDescription.value as string, // string으로 명시적 캐스팅
-      imageUrl: form.menuImage.value,
-      isAvailable: form.menuAvailability.value === 'true',
-      temperatureOptions: (Array.from(form.querySelectorAll('input[name="temperatureOptions"]:checked')) as HTMLInputElement[]).map((cb) => cb.value),
-      sizeOptions: (Array.from(form.querySelectorAll('input[name="sizeOptions"]:checked')) as HTMLInputElement[]).map((cb) => cb.value),
-      adminPriority: form.adminPriority.value ? parseInt(form.adminPriority.value) : null,
-      popularity: form.popularity.value ? parseInt(form.popularity.value) : null,
-      // extras, tags, nutritionInfo 등은 필요에 따라 추가
+      name: (form.elements.namedItem('menuName') as HTMLInputElement).value,
+      category: (form.elements.namedItem('menuCategory') as HTMLSelectElement).value,
+      price: parseInt((form.elements.namedItem('menuPrice') as HTMLInputElement).value),
+      description: (form.elements.namedItem('menuDescription') as HTMLTextAreaElement).value,
+      imageUrl: (form.elements.namedItem('menuImage') as HTMLInputElement).value,
+      isAvailable: (form.elements.namedItem('menuAvailability') as HTMLSelectElement).value === 'true',
+      temperatureOptions: Array.from(form.querySelectorAll('input[name="temperatureOptions"]:checked')).map((cb) => (cb as HTMLInputElement).value),
+      sizeOptions: Array.from(form.querySelectorAll('input[name="sizeOptions"]:checked')).map((cb) => (cb as HTMLInputElement).value),
+      adminPriority: (form.elements.namedItem('adminPriority') as HTMLInputElement).value ? parseInt((form.elements.namedItem('adminPriority') as HTMLInputElement).value) : null,
+      popularity: (form.elements.namedItem('popularity') as HTMLInputElement).value ? parseInt((form.elements.namedItem('popularity') as HTMLInputElement).value) : null,
     };
 
     try {
@@ -210,14 +191,12 @@ const MenuManagement = () => {
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">메뉴 관리</h1>
       
-      {/* 실시간 상태 표시 */}
       <Alert className="mb-6 bg-green-50 border-green-300">
         <AlertDescription className="text-green-800">
           실시간 연동 중 - 변경사항이 즉시 키오스크에 반영됩니다
         </AlertDescription>
       </Alert>
 
-      {/* 카테고리 필터 */}
       <div className="flex gap-2 mb-6">
         {categories.map(cat => (
           <button
@@ -234,12 +213,10 @@ const MenuManagement = () => {
         ))}
       </div>
 
-      {/* 메뉴 추가 버튼 */}
       <button className="btn btn-success mb-6" onClick={showAddMenuModal}>
         ➕ 새 메뉴 추가
       </button>
 
-      {/* 메뉴 그리드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMenus.map((menu) => (
           <Card key={menu._id} className={`${!menu.isAvailable ? 'opacity-60' : ''}`}>
@@ -252,25 +229,20 @@ const MenuManagement = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* 이미지 */}
               {menu.imageUrl && (
-                <img src={menu.imageUrl} alt={menu.name} className="w-full h-32 object-cover rounded-md mb-4" />
+                <img src={`${API_BASE_URL.replace('/api', '')}/uploads/${menu.imageUrl}`} alt={menu.name} className="w-full h-32 object-cover rounded-md mb-4" />
               )}
-              {/* 가격 */}
               <div className="mb-2">
                 <span className="text-lg font-bold">{Utils.formatPrice(menu.price)}</span>
               </div>
-              {/* 설명 */}
               {menu.description && (
                 <p className="text-sm text-gray-600 mb-2">{menu.description}</p>
               )}
-              {/* 옵션 */}
-              {(menu.temperatureOptions && menu.temperatureOptions.length > 0 || menu.sizeOptions && menu.sizeOptions.length > 0) && (
+              {((menu.temperatureOptions?.length ?? 0) > 0 || (menu.sizeOptions?.length ?? 0) > 0) && (
                 <div className="text-xs text-gray-500 mb-2">
-                  옵션: {menu.temperatureOptions?.join(', ')}{menu.temperatureOptions?.length > 0 && menu.sizeOptions?.length > 0 ? ', ' : ''}{menu.sizeOptions?.join(', ')}
+                  옵션: {menu.temperatureOptions?.join(', ')}{(menu.temperatureOptions?.length ?? 0) > 0 && (menu.sizeOptions?.length ?? 0) > 0 ? ', ' : ''}{menu.sizeOptions?.join(', ')}
                 </div>
               )}
-              {/* 태그 */}
               <div className="flex gap-2 mb-4">
                 {menu.tags?.map((tag: string) => (
                   <span key={tag} className={`px-2 py-1 rounded text-xs ${
@@ -280,12 +252,10 @@ const MenuManagement = () => {
                   </span>
                 ))}
               </div>
-              {/* adminPriority, popularity */}
               <div className="text-xs text-gray-500 mb-4">
                 우선순위: {menu.adminPriority || '-'} | 인기도: {menu.popularity || '-'}
               </div>
 
-              {/* 액션 버튼들 */}
               <div className="flex gap-2">
                 <button
                   onClick={() => toggleAvailability(menu._id, menu.isAvailable)}
@@ -310,7 +280,6 @@ const MenuManagement = () => {
                 </button>
               </div>
 
-              {/* 상태 표시 */}
               {!menu.isAvailable && (
                 <div className="mt-3 text-red-600 text-sm font-medium text-center">
                   현재 품절 상태입니다
@@ -335,7 +304,6 @@ const MenuManagement = () => {
         ))}
       </div>
 
-      {/* 확인 다이얼로그 */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -360,7 +328,6 @@ const MenuManagement = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 메뉴 추가/수정 모달 */}
       <AlertDialog open={showMenuModal} onOpenChange={setShowMenuModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -392,7 +359,7 @@ const MenuManagement = () => {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700">설명</label>
-              <textarea name="menuDescription" defaultValue={currentEditingMenu?.description || ''} rows="3" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+              <textarea name="menuDescription" defaultValue={currentEditingMenu?.description || ''} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -451,7 +418,7 @@ const MenuManagement = () => {
             </div>
             <AlertDialogFooter>
               <button type="button" onClick={closeMenuModal} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">취소</button>
-              <AlertDialogAction onClick={() => submitMenu(event)} type="submit">저장</AlertDialogAction>
+              <AlertDialogAction type="submit">저장</AlertDialogAction>
             </AlertDialogFooter>
           </form>
         </AlertDialogContent>

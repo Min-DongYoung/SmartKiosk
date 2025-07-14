@@ -270,7 +270,7 @@ export const processVoiceWithGemini = async (
       success: false,
       action: 'error',
       items: [],
-      response: '처리할 수 없습니다. 다시 말씀해주세요.',
+      response: '다시 말씀해주세요.',
       totalPrice: 0
     };
   }

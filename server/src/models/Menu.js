@@ -23,9 +23,9 @@ const menuSchema = new mongoose.Schema({
     // seedMenu.js의 카테고리에 맞게 enum 확장
     enum: ['커피', '에이드', '스무디', '티', '라떼', '디저트'] 
   },
-  imageUrl: { // image -> imageUrl 변경
+  imageUrl: {
     type: String,
-    required: true
+    default: '/uploads/default.jpg', // 기본 이미지
   },
   temperatureOptions: [{ // options.temperature -> temperatureOptions 변경
     type: String,

@@ -4,12 +4,14 @@ import { API_BASE_URL } from '../config';
 
 // Axios 인스턴스 생성
 const api = axios.create({
-  baseURL: API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+console.log('API Service - Base URL:', API_BASE_URL);
 
 // 요청 인터셉터
 api.interceptors.request.use(
