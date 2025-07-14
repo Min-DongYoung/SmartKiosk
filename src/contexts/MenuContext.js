@@ -10,6 +10,8 @@ export const MenuProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isOnline, setIsOnline] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [quickMenus, setQuickMenus] = useState([]);
+  const QUICK_MENU_LIMIT = 5; // Quick 메뉴 최대 개수
 
   // 네트워크 상태 모니터링
   useEffect(() => {
@@ -71,6 +73,77 @@ export const MenuProvider = ({ children }) => {
     loadMenus();
   }, [loadMenus]);
 
+  // menus 상태가 변경될 때마다 quickMenus 업데이트
+  useEffect(() => {
+    if (Object.keys(menus).length > 0) {
+      const allAvailableMenus = Object.values(menus).filter(menu => menu.isAvailable);
+
+      // Helper to calculate simplicity score and sort
+      const getSortedMenusForCategory = (category) => {
+        return allAvailableMenus
+          .filter(menu => menu.category === category)
+          .map(menu => {
+            let simplicityScore = 0;
+            if (!menu.sizeOptions?.length && !menu.temperatureOptions?.length && !menu.extras?.length) {
+              simplicityScore = 0;
+            } else {
+              simplicityScore = (menu.sizeOptions?.length || 0) + (menu.temperatureOptions?.length || 0) + (menu.extras?.length || 0);
+            }
+            return { ...menu, simplicityScore };
+          })
+          .sort((a, b) => {
+            // adminPriority가 낮은 순서 (null은 가장 낮은 우선순위)
+            if (a.adminPriority !== b.adminPriority) {
+              const apA = a.adminPriority === null || a.adminPriority === undefined ? Infinity : a.adminPriority;
+              const apB = b.adminPriority === null || b.adminPriority === undefined ? Infinity : b.adminPriority;
+              return apA - apB;
+            }
+            // 간편성 점수가 낮은 순서
+            if (a.simplicityScore !== b.simplicityScore) return a.simplicityScore - b.simplicityScore;
+            // 이름 오름차순
+            return a.name.localeCompare(b.name);
+          });
+      };
+
+      let selectedQuickMenus = [];
+
+      // 커피 2개
+      const coffeeMenus = getSortedMenusForCategory('커피');
+      selectedQuickMenus.push(...coffeeMenus.slice(0, 2));
+
+      // 라떼 1개
+      const latteMenus = getSortedMenusForCategory('라떼');
+      selectedQuickMenus.push(...latteMenus.slice(0, 1));
+
+      // 에이드 1개
+      const aidMenus = getSortedMenusForCategory('에이드');
+      selectedQuickMenus.push(...aidMenus.slice(0, 1));
+
+      // 디저트 1개
+      const dessertMenus = getSortedMenusForCategory('디저트');
+      selectedQuickMenus.push(...dessertMenus.slice(0, 1));
+
+      // Ensure uniqueness (though slice should prevent duplicates from same category)
+      const uniqueQuickMenus = Array.from(new Map(selectedQuickMenus.map(item => [item.id, item])).values());
+
+      // Final sort for display (optional, but good for consistent UI)
+      uniqueQuickMenus.sort((a, b) => {
+        // Sort by adminPriority first
+        if (a.adminPriority !== b.adminPriority) {
+          const apA = a.adminPriority === null || a.adminPriority === undefined ? Infinity : a.adminPriority;
+          const apB = b.adminPriority === null || b.adminPriority === undefined ? Infinity : b.adminPriority;
+          return apA - apB;
+        }
+        // Then by simplicityScore
+        if (a.simplicityScore !== b.simplicityScore) return a.simplicityScore - b.simplicityScore;
+        // Finally by name
+        return a.name.localeCompare(b.name);
+      });
+
+      setQuickMenus(uniqueQuickMenus);
+    }
+  }, [menus]);
+
   // 메뉴 검색
   const searchMenus = useCallback(async (query, filters) => {
     try {
@@ -94,10 +167,12 @@ export const MenuProvider = ({ children }) => {
   const findMenuItem = useCallback((keyword) => {
     const menuNames = Object.keys(menus);
     const foundName = menuNames.find(name => 
-      keyword.includes(name.toLowerCase()) || 
-      keyword.includes(name.replace(/\s/g, '').toLowerCase())
+      name.toLowerCase() === keyword.toLowerCase() || 
+      name.replace(/\s/g, '').toLowerCase() === keyword.replace(/\s/g, '').toLowerCase()
     );
-    return foundName ? menus[foundName] : null;
+    const foundItem = foundName ? menus[foundName] : null;
+    console.log(`findMenuItem: Keyword='${keyword}', Found Item ID=${foundItem ? foundItem.id : 'N/A'}, Name=${foundItem ? foundItem.name : 'N/A'}`);
+    return foundItem;
   }, [menus]);
 
   // 카테고리별 메뉴 가져오기
@@ -153,7 +228,8 @@ export const MenuProvider = ({ children }) => {
     findMenuItem,
     getMenusByCategory,
     calculatePrice,
-    refreshMenus
+    refreshMenus,
+    quickMenus,
   };
 
   return (

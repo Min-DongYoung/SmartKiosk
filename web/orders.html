@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 내역 - 스마트 키오스크 관리자</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">🏪 스마트 키오스크 관리자</div>
+            <nav class="nav-links">
+                <a href="index.html">대시보드</a>
+                <a href="menus.html">메뉴 관리</a>
+                <a href="orders.html" class="active">주문 내역</a>
+                <a href="statistics.html">주문 통계</a>
+                <a href="advertisements.html">광고 관리</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card-header">
+            <h1 class="card-title">주문 내역</h1>
+            <button class="btn btn-secondary" onclick="refreshOrders()">
+                🔄 새로고침
+            </button>
+        </div>
+
+        <!-- 필터 및 검색 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">필터 및 검색</h2>
+                <button class="btn btn-sm btn-secondary" onclick="resetFilters()">
+                    🔄 필터 초기화
+                </button>
+            </div>
+            <div class="grid grid-4">
+                <div class="form-group">
+                    <label class="form-label">주문 상태</label>
+                    <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                        <option value="">전체 상태</option>
+                        <option value="pending">대기중</option>
+                        <option value="preparing">준비중</option>
+                        <option value="ready">준비완료</option>
+                        <option value="completed">완료</option>
+                        <option value="cancelled">취소됨</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">날짜 범위</label>
+                    <select class="form-select" id="dateRangeFilter" onchange="applyFilters()">
+                        <option value="">전체 기간</option>
+                        <option value="today">오늘</option>
+                        <option value="yesterday">어제</option>
+                        <option value="week">최근 7일</option>
+                        <option value="month">최근 30일</option>
+                        <option value="custom">사용자 정의</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">시작 날짜</label>
+                    <input type="date" class="form-control" id="startDate" onchange="applyFilters()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">종료 날짜</label>
+                    <input type="date" class="form-control" id="endDate" onchange="applyFilters()">
+                </div>
+            </div>
+            <div class="grid grid-3">
+                <div class="form-group">
+                    <label class="form-label">주문번호 검색</label>
+                    <input type="text" class="form-control" id="orderIdSearch" placeholder="주문번호를 입력하세요" onkeyup="applyFilters()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">메뉴명 검색</label>
+                    <input type="text" class="form-control" id="menuSearch" placeholder="메뉴명을 입력하세요" onkeyup="applyFilters()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">금액 범위</label>
+                    <select class="form-select" id="priceRangeFilter" onchange="applyFilters()">
+                        <option value="">전체 금액</option>
+                        <option value="0-10000">0 - 10,000원</option>
+                        <option value="10000-20000">10,000 - 20,000원</option>
+                        <option value="20000-50000">20,000 - 50,000원</option>
+                        <option value="50000-999999">50,000원 이상</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 주문 통계 -->
+        <div class="grid grid-5">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOrdersCount">-</div>
+                <div class="stat-label">전체 주문</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingOrdersCount">-</div>
+                <div class="stat-label">대기 중</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedOrdersCount">-</div>
+                <div class="stat-label">완료</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalRevenue">-</div>
+                <div class="stat-label">총 매출</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="averageOrderValue">-</div>
+                <div class="stat-label">평균 주문액</div>
+            </div>
+        </div>
+
+        <!-- 주문 목록 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">주문 목록</h2>
+                <div class="d-flex gap-2">
+                    <select class="form-select" id="sortBy" onchange="applyFilters()" style="width: 200px;">
+                        <option value="createdAt">주문시간순</option>
+                        <option value="totalPrice">금액순</option>
+                        <option value="status">상태순</option>
+                        <option value="orderId">주문번호순</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleSortOrder()">
+                        <span id="sortOrderText">⬇️</span>
+                    </button>
+                </div>
+            </div>
+            <div id="ordersList" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 주문 상세 모달 -->
+    <div id="orderDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="modal-close" onclick="closeOrderDetailModal()">&times;</span>
+            <h2>주문 상세 정보</h2>
+            
+            <div id="orderDetailContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        let allOrders = [];
+        let filteredOrders = [];
+        let sortOrder = 'desc';
+
+        // 페이지 로드 시 주문 목록 로드
+        document.addEventListener('DOMContentLoaded', loadOrders);
+
+        // 주문 목록 로드
+        async function loadOrders() {
+            try {
+                Loading.show('#ordersList');
+                const response = await API.get('/orders?limit=100');
+                allOrders = response.data;
+                filteredOrders = [...allOrders];
+                
+                renderOrders();
+                updateStatistics();
+                
+            } catch (error) {
+                console.error('주문 로드 실패:', error);
+                Notification.error('주문 목록을 불러오는데 실패했습니다.');
+            } finally {
+                Loading.hide('#ordersList');
+            }
+        }
+
+        // 주문 렌더링
+        function renderOrders() {
+            const container = document.getElementById('ordersList');
+            
+            if (filteredOrders.length === 0) {
+                container.innerHTML = '<p class="text-center">조건에 맞는 주문이 없습니다.</p>';
+                return;
+            }
+
+            const columns = [
+                { 
+                    key: 'orderId', 
+                    header: '주문번호',
+                    render: (value) => `<strong>#${value}</strong>`
+                },
+                { 
+                    key: 'items', 
+                    header: '주문 내역',
+                    render: (items) => {
+                        const firstItem = items[0];
+                        const count = items.length;
+                        const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+                        return count > 1 ? 
+                            `${firstItem.name} 외 ${count-1}개 (총 ${totalQuantity}개)` : 
+                            `${firstItem.name} (${firstItem.quantity}개)`;
+                    }
+                },
+                { 
+                    key: 'totalPrice', 
+                    header: '총 금액',
+                    render: (value) => `<strong>${Utils.formatPrice(value)}</strong>`
+                },
+                { 
+                    key: 'status', 
+                    header: '상태',
+                    render: (value) => `<span class="badge ${Utils.getOrderStatusBadge(value)}">${Utils.getOrderStatusName(value)}</span>`
+                },
+                { 
+                    key: 'createdAt', 
+                    header: '주문시간',
+                    render: (value) => Utils.formatDate(value)
+                },
+                { 
+                    key: 'updatedAt', 
+                    header: '최근 업데이트',
+                    render: (value) => Utils.formatDate(value)
+                }
+            ];
+
+            const actions = [
+                {
+                    text: '상세보기',
+                    class: 'btn-primary',
+                    onClick: (order) => showOrderDetail(order)
+                },
+                {
+                    text: '상태변경',
+                    class: 'btn-warning',
+                    onClick: (order) => showStatusChangeModal(order)
+                }
+            ];
+
+            Table.render(container, filteredOrders, columns, actions);
+        }
+
+        // 통계 업데이트
+        function updateStatistics() {
+            const total = filteredOrders.length;
+            const pending = filteredOrders.filter(order => order.status === 'pending').length;
+            const completed = filteredOrders.filter(order => order.status === 'completed').length;
+            const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+            const averageOrderValue = total > 0 ? Math.round(totalRevenue / total) : 0;
+
+            document.getElementById('totalOrdersCount').textContent = total;
+            document.getElementById('pendingOrdersCount').textContent = pending;
+            document.getElementById('completedOrdersCount').textContent = completed;
+            document.getElementById('totalRevenue').textContent = Utils.formatPrice(totalRevenue);
+            document.getElementById('averageOrderValue').textContent = Utils.formatPrice(averageOrderValue);
+        }
+
+        // 필터 적용
+        function applyFilters() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateRangeFilter = document.getElementById('dateRangeFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const orderIdSearch = document.getElementById('orderIdSearch').value.toLowerCase();
+            const menuSearch = document.getElementById('menuSearch').value.toLowerCase();
+            const priceRangeFilter = document.getElementById('priceRangeFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // 날짜 범위 설정
+            let dateFrom = null;
+            let dateTo = null;
+            
+            if (dateRangeFilter === 'today') {
+                dateFrom = new Date();
+                dateFrom.setHours(0, 0, 0, 0);
+                dateTo = new Date();
+                dateTo.setHours(23, 59, 59, 999);
+            } else if (dateRangeFilter === 'yesterday') {
+                dateFrom = new Date();
+                dateFrom.setDate(dateFrom.getDate() - 1);
+                dateFrom.setHours(0, 0, 0, 0);
+                dateTo = new Date();
+                dateTo.setDate(dateTo.getDate() - 1);
+                dateTo.setHours(23, 59, 59, 999);
+            } else if (dateRangeFilter === 'week') {
+                dateFrom = new Date();
+                dateFrom.setDate(dateFrom.getDate() - 7);
+                dateFrom.setHours(0, 0, 0, 0);
+                dateTo = new Date();
+            } else if (dateRangeFilter === 'month') {
+                dateFrom = new Date();
+                dateFrom.setDate(dateFrom.getDate() - 30);
+                dateFrom.setHours(0, 0, 0, 0);
+                dateTo = new Date();
+            } else if (dateRangeFilter === 'custom') {
+                if (startDate) {
+                    dateFrom = new Date(startDate);
+                    dateFrom.setHours(0, 0, 0, 0);
+                }
+                if (endDate) {
+                    dateTo = new Date(endDate);
+                    dateTo.setHours(23, 59, 59, 999);
+                }
+            }
+
+            filteredOrders = allOrders.filter(order => {
+                // 상태 필터
+                if (statusFilter && order.status !== statusFilter) return false;
+                
+                // 날짜 필터
+                const orderDate = new Date(order.createdAt);
+                if (dateFrom && orderDate < dateFrom) return false;
+                if (dateTo && orderDate > dateTo) return false;
+                
+                // 주문번호 검색
+                if (orderIdSearch && !order.orderId.toLowerCase().includes(orderIdSearch)) return false;
+                
+                // 메뉴명 검색
+                if (menuSearch) {
+                    const hasMatchingItem = order.items.some(item => 
+                        item.name.toLowerCase().includes(menuSearch)
+                    );
+                    if (!hasMatchingItem) return false;
+                }
+                
+                // 가격 범위 필터
+                if (priceRangeFilter) {
+                    const [min, max] = priceRangeFilter.split('-').map(Number);
+                    if (order.totalPrice < min || order.totalPrice > max) return false;
+                }
+                
+                return true;
+            });
+
+            // 정렬 적용
+            applySorting(sortBy);
+            
+            renderOrders();
+            updateStatistics();
+        }
+
+        // 정렬 적용
+        function applySorting(sortBy) {
+            filteredOrders.sort((a, b) => {
+                let aValue = a[sortBy];
+                let bValue = b[sortBy];
+                
+                if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+                    aValue = new Date(aValue);
+                    bValue = new Date(bValue);
+                }
+                
+                if (sortOrder === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+        }
+
+        // 정렬 순서 토글
+        function toggleSortOrder() {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            document.getElementById('sortOrderText').textContent = sortOrder === 'asc' ? '⬆️' : '⬇️';
+            applyFilters();
+        }
+
+        // 필터 초기화
+        function resetFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('dateRangeFilter').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('orderIdSearch').value = '';
+            document.getElementById('menuSearch').value = '';
+            document.getElementById('priceRangeFilter').value = '';
+            document.getElementById('sortBy').value = 'createdAt';
+            sortOrder = 'desc';
+            document.getElementById('sortOrderText').textContent = '⬇️';
+            applyFilters();
+        }
+
+        // 주문 상세 정보 표시
+        function showOrderDetail(order) {
+            document.getElementById('orderDetailModal').style.display = 'block';
+            
+            const content = document.getElementById('orderDetailContent');
+            content.innerHTML = `
+                <div class="order-detail-header">
+                    <h3>주문 #${order.orderId}</h3>
+                    <span class="badge ${Utils.getOrderStatusBadge(order.status)}">${Utils.getOrderStatusName(order.status)}</span>
+                </div>
+                
+                <div class="order-info-grid">
+                    <div class="order-info-section">
+                        <h4>주문 정보</h4>
+                        <div class="info-item">
+                            <span class="info-label">주문시간:</span>
+                            <span class="info-value">${Utils.formatDate(order.createdAt)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">최근 업데이트:</span>
+                            <span class="info-value">${Utils.formatDate(order.updatedAt)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">총 금액:</span>
+                            <span class="info-value"><strong>${Utils.formatPrice(order.totalPrice)}</strong></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-items-section">
+                    <h4>주문 내역</h4>
+                    <div class="order-items-list">
+                        ${order.items.map(item => `
+                            <div class="order-item">
+                                <div class="item-info">
+                                    <strong>${item.name}</strong>
+                                    <div class="item-details">
+                                        <span>수량: ${item.quantity}개</span>
+                                        <span>단가: ${Utils.formatPrice(item.price)}</span>
+                                        <span>소계: ${Utils.formatPrice(item.price * item.quantity)}</span>
+                                    </div>
+                                    ${item.options && item.options.length > 0 ? 
+                                        `<div class="item-options">옵션: ${item.options.join(', ')}</div>` : 
+                                        ''
+                                    }
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 주문 상태 변경 모달
+        function showStatusChangeModal(order) {
+            const statusOptions = [
+                { value: 'pending', label: '대기중' },
+                { value: 'preparing', label: '준비중' },
+                { value: 'ready', label: '준비완료' },
+                { value: 'completed', label: '완료' },
+                { value: 'cancelled', label: '취소됨' }
+            ];
+
+            const optionsHtml = statusOptions.map(option => 
+                `<option value="${option.value}" ${option.value === order.status ? 'selected' : ''}>${option.label}</option>`
+            ).join('');
+
+            const content = `
+                <div class="status-change-form">
+                    <p><strong>주문 #${order.orderId}</strong>의 상태를 변경합니다.</p>
+                    <div class="form-group">
+                        <label class="form-label">새로운 상태:</label>
+                        <select class="form-select" id="newStatus">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            Modal.show('주문 상태 변경', content, [
+                {
+                    text: '취소',
+                    class: 'btn-secondary',
+                    onClick: () => Modal.hide()
+                },
+                {
+                    text: '상태 변경',
+                    class: 'btn-primary',
+                    onClick: () => updateOrderStatus(order.orderId, document.getElementById('newStatus').value)
+                }
+            ]);
+        }
+
+        // 주문 상태 업데이트
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                Loading.show();
+                await API.patch(`/orders/${orderId}/status`, { status: newStatus });
+                Notification.success('주문 상태가 성공적으로 변경되었습니다.');
+                Modal.hide();
+                await loadOrders();
+            } catch (error) {
+                console.error('주문 상태 변경 실패:', error);
+                Notification.error('주문 상태 변경에 실패했습니다.');
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 주문 상세 모달 닫기
+        function closeOrderDetailModal() {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        }
+
+        // 주문 새로고침
+        async function refreshOrders() {
+            await loadOrders();
+            Notification.success('주문 목록이 새로고침되었습니다.');
+        }
+
+        // 주문 상세 스타일
+        const orderDetailStyle = `
+            .order-detail-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 2px solid #f0f0f0;
+            }
+            
+            .order-info-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+            
+            .order-info-section h4 {
+                margin-bottom: 1rem;
+                color: #333;
+            }
+            
+            .info-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 0;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .info-label {
+                font-weight: 500;
+                color: #666;
+            }
+            
+            .info-value {
+                color: #333;
+            }
+            
+            .order-items-section h4 {
+                margin-bottom: 1rem;
+                color: #333;
+            }
+            
+            .order-item {
+                padding: 1rem;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+            }
+            
+            .item-info strong {
+                font-size: 1.1rem;
+                color: #333;
+            }
+            
+            .item-details {
+                display: flex;
+                gap: 1rem;
+                margin-top: 0.5rem;
+                font-size: 0.9rem;
+                color: #666;
+            }
+            
+            .item-options {
+                margin-top: 0.5rem;
+                font-size: 0.9rem;
+                color: #888;
+                font-style: italic;
+            }
+            
+            .status-change-form {
+                padding: 1rem 0;
+            }
+            
+            .grid-5 {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = orderDetailStyle;
+        document.head.appendChild(style);
+
+        // 날짜 범위 변경 시 사용자 정의 필드 활성화
+        document.getElementById('dateRangeFilter').addEventListener('change', function() {
+            const isCustom = this.value === 'custom';
+            document.getElementById('startDate').disabled = !isCustom;
+            document.getElementById('endDate').disabled = !isCustom;
+            
+            if (!isCustom) {
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+            }
+        });
+
+        // 초기 설정
+        document.getElementById('startDate').disabled = true;
+        document.getElementById('endDate').disabled = true;
+    </script>
+</body>
+</html> 

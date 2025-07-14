@@ -1,29 +1,19 @@
-feat: Implement backend and web admin page setup
+feat: Integrate temperature options and image handling for menus
 
-This commit introduces the initial setup for the Node.js backend and the React-based web administration page.
+This commit refactors menu management to handle hot/iced options and their respective images more effectively.
 
 Key changes include:
 - Backend:
-    - Converted Node.js backend to ES Modules.
-    - Implemented MongoDB models (Menu, Order, VoiceLog, KioskConfig).
-    - Set up API routes (menu, order, voice, config, analytics, auth).
-    - Implemented controllers for core functionalities.
-    - Added WebSocket for real-time updates.
-    - Updated seed script to use provided menu data and ensure proper seeding.
-    - Configured environment variables for host, port, and MongoDB URI.
+    - Modified `Menu` model to remove unique constraint on name and added imageUrls field for hot/iced images.
+    - Updated menuController.js to group menus by name and consolidate temperature options and images.
+- Frontend:
+    - Updated MenuContext.js to process grouped menu data from the backend.
+    - Modified MenuListScreen.js to display a single entry for menus with temperature options.
+    - Enhanced MenuDetailScreen.js to allow selection of hot/iced options and dynamically change images based on selection.
+    - Adjusted CartScreen.js to ensure independent quantity control for each menu item with distinct options.
+    - Fixed quantityButton styling in CartScreen.js to maintain fixed width.
+    - Increased image size in CartScreen.js.
 - Web Admin:
-    - Created a new React project for the web administration interface.
-    - Integrated Dashboard and Menu Management components.
-    - Set up basic routing.
-    - Configured Tailwind CSS (manual steps required for full setup).
-    - Implemented API service for communication with the backend.
-    - Addressed initial TypeScript and ESLint errors.
-- React Native App:
-    - Updated contexts (MenuContext, CartContext, VoiceContext) to use backend APIs.
-    - Modified screens (MenuListScreen, MenuDetailScreen) to fetch data from the backend.
-    - Removed local menu data.
-    - Adjusted environment variable loading.
-
-Current known issues:
-- React Native app is not displaying menus, indicating a potential data retrieval or display issue despite successful seeding.
-- Web admin page is failing to compile due to persistent Tailwind CSS and TypeScript errors, likely related to caching or build configuration.
+    - Created constants.js for API endpoints and menu options.
+    - Refactored script.js to use API_ENDPOINTS.
+    - Updated menus.html to dynamically render menu option checkboxes.

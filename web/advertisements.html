@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>광고 관리 - 스마트 키오스크 관리자</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">🏪 스마트 키오스크 관리자</div>
+            <nav class="nav-links">
+                <a href="index.html">대시보드</a>
+                <a href="menus.html">메뉴 관리</a>
+                <a href="orders.html">주문 내역</a>
+                <a href="statistics.html">주문 통계</a>
+                <a href="advertisements.html" class="active">광고 관리</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card-header">
+            <h1 class="card-title">광고 관리</h1>
+            <button class="btn btn-success" onclick="showAddAdModal()">
+                ➕ 새 광고 추가
+            </button>
+        </div>
+
+        <!-- 필터 및 검색 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">필터 및 검색</h2>
+                <button class="btn btn-sm btn-secondary" onclick="resetFilters()">
+                    🔄 필터 초기화
+                </button>
+            </div>
+            <div class="grid grid-4">
+                <div class="form-group">
+                    <label class="form-label">광고 위치</label>
+                    <select class="form-select" id="positionFilter" onchange="applyFilters()">
+                        <option value="">전체 위치</option>
+                        <option value="main">메인 화면</option>
+                        <option value="detail">상세 화면</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">활성 상태</label>
+                    <select class="form-select" id="activeFilter" onchange="applyFilters()">
+                        <option value="">전체 상태</option>
+                        <option value="true">활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">제목 검색</label>
+                    <input type="text" class="form-control" id="titleSearch" placeholder="광고 제목을 입력하세요" onkeyup="applyFilters()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">우선순위</label>
+                    <select class="form-select" id="priorityFilter" onchange="applyFilters()">
+                        <option value="">전체 우선순위</option>
+                        <option value="high">높음 (8-10)</option>
+                        <option value="medium">보통 (4-7)</option>
+                        <option value="low">낮음 (1-3)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 광고 통계 -->
+        <div class="grid grid-4">
+            <div class="stat-card">
+                <div class="stat-number" id="totalAdsCount">-</div>
+                <div class="stat-label">전체 광고</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeAdsCount">-</div>
+                <div class="stat-label">활성 광고</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="mainAdsCount">-</div>
+                <div class="stat-label">메인 화면</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="detailAdsCount">-</div>
+                <div class="stat-label">상세 화면</div>
+            </div>
+        </div>
+
+        <!-- 광고 목록 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">광고 목록</h2>
+                <div class="d-flex gap-2">
+                    <select class="form-select" id="sortBy" onchange="applyFilters()" style="width: 200px;">
+                        <option value="priority">우선순위순</option>
+                        <option value="title">제목순</option>
+                        <option value="position">위치순</option>
+                        <option value="createdAt">생성일순</option>
+                        <option value="updatedAt">수정일순</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleSortOrder()">
+                        <span id="sortOrderText">⬇️</span>
+                    </button>
+                </div>
+            </div>
+            <div id="adsList" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 광고 추가/수정 모달 -->
+    <div id="adModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="modal-close" onclick="closeAdModal()">&times;</span>
+            <h2 id="modalTitle">새 광고 추가</h2>
+            
+            <form id="adForm" onsubmit="submitAd(event)">
+                <div class="form-group">
+                    <label class="form-label">광고 제목 *</label>
+                    <input type="text" class="form-control" id="adTitle" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">광고 설명</label>
+                    <textarea class="form-control" id="adDescription" rows="3" placeholder="광고 설명을 입력하세요"></textarea>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">광고 위치 *</label>
+                        <select class="form-select" id="adPosition" required>
+                            <option value="">위치 선택</option>
+                            <option value="main">메인 화면</option>
+                            <option value="detail">상세 화면</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">우선순위 *</label>
+                        <input type="number" class="form-control" id="adPriority" required min="1" max="10" value="5">
+                        <small>1(낮음) ~ 10(높음)</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">이미지 URL *</label>
+                    <input type="url" class="form-control" id="adImage" required placeholder="이미지 URL을 입력하세요">
+                    <small>예: /img/ad_img_3.jpg</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">링크 URL</label>
+                    <input type="url" class="form-control" id="adLink" placeholder="클릭 시 이동할 URL (선택사항)">
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">시작일</label>
+                        <input type="date" class="form-control" id="adStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">종료일</label>
+                        <input type="date" class="form-control" id="adEndDate">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">활성 상태</label>
+                    <select class="form-select" id="adActive">
+                        <option value="true">활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">이미지 미리보기</label>
+                    <div id="imagePreview" style="width: 100%; height: 200px; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; color: #999; border-radius: 8px;">
+                        이미지 URL을 입력하면 미리보기가 표시됩니다
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeAdModal()">
+                        취소
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        let allAds = [];
+        let filteredAds = [];
+        let sortOrder = 'desc';
+        let currentEditingAd = null;
+
+        // 페이지 로드 시 광고 목록 로드
+        document.addEventListener('DOMContentLoaded', loadAds);
+
+        // 광고 목록 로드
+        async function loadAds() {
+            try {
+                Loading.show('#adsList');
+                const response = await API.get('/advertisements');
+                allAds = response.data;
+                filteredAds = [...allAds];
+                
+                renderAds();
+                updateStatistics();
+                
+            } catch (error) {
+                console.error('광고 로드 실패:', error);
+                Notification.error('광고 목록을 불러오는데 실패했습니다.');
+            } finally {
+                Loading.hide('#adsList');
+            }
+        }
+
+        // 광고 렌더링
+        function renderAds() {
+            const container = document.getElementById('adsList');
+            
+            if (filteredAds.length === 0) {
+                container.innerHTML = '<p class="text-center">조건에 맞는 광고가 없습니다.</p>';
+                return;
+            }
+
+            const columns = [
+                { 
+                    key: 'image', 
+                    header: '이미지',
+                    render: (value) => value ? 
+                        `<img src="${value}" alt="광고" style="width: 100px; height: 60px; object-fit: cover; border-radius: 5px;">` : 
+                        '<div style="width: 100px; height: 60px; background: #f0f0f0; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px;">이미지<br>없음</div>'
+                },
+                { 
+                    key: 'title', 
+                    header: '제목',
+                    render: (value) => `<strong>${value}</strong>`
+                },
+                { 
+                    key: 'description', 
+                    header: '설명',
+                    render: (value) => value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : '-'
+                },
+                { 
+                    key: 'position', 
+                    header: '위치',
+                    render: (value) => value === 'main' ? '메인 화면' : '상세 화면'
+                },
+                { 
+                    key: 'priority', 
+                    header: '우선순위',
+                    render: (value) => `<span class="badge ${value >= 8 ? 'badge-danger' : value >= 4 ? 'badge-warning' : 'badge-info'}">${value}</span>`
+                },
+                { 
+                    key: 'isActive', 
+                    header: '상태',
+                    render: (value) => value ? 
+                        '<span class="badge badge-success">활성</span>' : 
+                        '<span class="badge badge-secondary">비활성</span>'
+                },
+                { 
+                    key: 'updatedAt', 
+                    header: '최근 수정',
+                    render: (value) => Utils.formatDate(value)
+                }
+            ];
+
+            const actions = [
+                {
+                    text: '수정',
+                    class: 'btn-primary',
+                    onClick: (ad) => editAd(ad)
+                },
+                {
+                    text: ad => ad.isActive ? '비활성화' : '활성화',
+                    class: ad => ad.isActive ? 'btn-warning' : 'btn-success',
+                    onClick: (ad) => toggleAdStatus(ad)
+                },
+                {
+                    text: '삭제',
+                    class: 'btn-danger',
+                    onClick: (ad) => deleteAd(ad)
+                }
+            ];
+
+            Table.render(container, filteredAds, columns, actions);
+        }
+
+        // 통계 업데이트
+        function updateStatistics() {
+            const total = allAds.length;
+            const active = allAds.filter(ad => ad.isActive).length;
+            const main = allAds.filter(ad => ad.position === 'main').length;
+            const detail = allAds.filter(ad => ad.position === 'detail').length;
+
+            document.getElementById('totalAdsCount').textContent = total;
+            document.getElementById('activeAdsCount').textContent = active;
+            document.getElementById('mainAdsCount').textContent = main;
+            document.getElementById('detailAdsCount').textContent = detail;
+        }
+
+        // 필터 적용
+        function applyFilters() {
+            const positionFilter = document.getElementById('positionFilter').value;
+            const activeFilter = document.getElementById('activeFilter').value;
+            const titleSearch = document.getElementById('titleSearch').value.toLowerCase();
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            filteredAds = allAds.filter(ad => {
+                // 위치 필터
+                if (positionFilter && ad.position !== positionFilter) return false;
+                
+                // 활성 상태 필터
+                if (activeFilter && ad.isActive.toString() !== activeFilter) return false;
+                
+                // 제목 검색
+                if (titleSearch && !ad.title.toLowerCase().includes(titleSearch)) return false;
+                
+                // 우선순위 필터
+                if (priorityFilter) {
+                    if (priorityFilter === 'high' && ad.priority < 8) return false;
+                    if (priorityFilter === 'medium' && (ad.priority < 4 || ad.priority > 7)) return false;
+                    if (priorityFilter === 'low' && ad.priority > 3) return false;
+                }
+                
+                return true;
+            });
+
+            // 정렬 적용
+            applySorting(sortBy);
+            
+            renderAds();
+        }
+
+        // 정렬 적용
+        function applySorting(sortBy) {
+            filteredAds.sort((a, b) => {
+                let aValue = a[sortBy];
+                let bValue = b[sortBy];
+                
+                if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+                    aValue = new Date(aValue);
+                    bValue = new Date(bValue);
+                }
+                
+                if (sortOrder === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+        }
+
+        // 정렬 순서 토글
+        function toggleSortOrder() {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            document.getElementById('sortOrderText').textContent = sortOrder === 'asc' ? '⬆️' : '⬇️';
+            applyFilters();
+        }
+
+        // 필터 초기화
+        function resetFilters() {
+            document.getElementById('positionFilter').value = '';
+            document.getElementById('activeFilter').value = '';
+            document.getElementById('titleSearch').value = '';
+            document.getElementById('priorityFilter').value = '';
+            document.getElementById('sortBy').value = 'priority';
+            sortOrder = 'desc';
+            document.getElementById('sortOrderText').textContent = '⬇️';
+            applyFilters();
+        }
+
+        // 광고 추가 모달 표시
+        function showAddAdModal() {
+            currentEditingAd = null;
+            document.getElementById('modalTitle').textContent = '새 광고 추가';
+            document.getElementById('adForm').reset();
+            document.getElementById('adPriority').value = 5;
+            document.getElementById('adActive').value = 'true';
+            updateImagePreview('');
+            document.getElementById('adModal').style.display = 'block';
+        }
+
+        // 광고 수정
+        function editAd(ad) {
+            currentEditingAd = ad;
+            document.getElementById('modalTitle').textContent = '광고 수정';
+            
+            // 폼 필드 채우기
+            document.getElementById('adTitle').value = ad.title;
+            document.getElementById('adDescription').value = ad.description || '';
+            document.getElementById('adPosition').value = ad.position;
+            document.getElementById('adPriority').value = ad.priority;
+            document.getElementById('adImage').value = ad.image;
+            document.getElementById('adLink').value = ad.link || '';
+            document.getElementById('adStartDate').value = ad.startDate ? ad.startDate.split('T')[0] : '';
+            document.getElementById('adEndDate').value = ad.endDate ? ad.endDate.split('T')[0] : '';
+            document.getElementById('adActive').value = ad.isActive.toString();
+            
+            updateImagePreview(ad.image);
+            document.getElementById('adModal').style.display = 'block';
+        }
+
+        // 광고 모달 닫기
+        function closeAdModal() {
+            document.getElementById('adModal').style.display = 'none';
+            currentEditingAd = null;
+        }
+
+        // 광고 저장
+        async function submitAd(event) {
+            event.preventDefault();
+            
+            try {
+                Loading.show();
+                
+                const formData = {
+                    title: document.getElementById('adTitle').value,
+                    description: document.getElementById('adDescription').value,
+                    position: document.getElementById('adPosition').value,
+                    priority: parseInt(document.getElementById('adPriority').value),
+                    image: document.getElementById('adImage').value,
+                    link: document.getElementById('adLink').value,
+                    startDate: document.getElementById('adStartDate').value || null,
+                    endDate: document.getElementById('adEndDate').value || null,
+                    isActive: document.getElementById('adActive').value === 'true'
+                };
+                
+                if (currentEditingAd) {
+                    // 수정
+                    await API.put(`/advertisements/${currentEditingAd._id}`, formData);
+                    Notification.success('광고가 성공적으로 수정되었습니다.');
+                } else {
+                    // 추가
+                    await API.post('/advertisements', formData);
+                    Notification.success('광고가 성공적으로 추가되었습니다.');
+                }
+                
+                closeAdModal();
+                await loadAds();
+                
+            } catch (error) {
+                console.error('광고 저장 실패:', error);
+                Notification.error('광고 저장에 실패했습니다: ' + error.message);
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 광고 상태 토글
+        async function toggleAdStatus(ad) {
+            const newStatus = !ad.isActive;
+            const action = newStatus ? '활성화' : '비활성화';
+            
+            Modal.confirm(
+                '광고 상태 변경',
+                `'${ad.title}' 광고를 ${action}하시겠습니까?`,
+                async () => {
+                    try {
+                        Loading.show();
+                        await API.put(`/advertisements/${ad._id}`, { isActive: newStatus });
+                        Notification.success(`광고가 ${action}되었습니다.`);
+                        await loadAds();
+                    } catch (error) {
+                        console.error('광고 상태 변경 실패:', error);
+                        Notification.error('광고 상태 변경에 실패했습니다.');
+                    } finally {
+                        Loading.hide();
+                    }
+                }
+            );
+        }
+
+        // 광고 삭제
+        async function deleteAd(ad) {
+            Modal.confirm(
+                '광고 삭제',
+                `'${ad.title}' 광고를 삭제하시겠습니까?<br><strong>이 작업은 되돌릴 수 없습니다.</strong>`,
+                async () => {
+                    try {
+                        Loading.show();
+                        await API.delete(`/advertisements/${ad._id}`);
+                        Notification.success('광고가 성공적으로 삭제되었습니다.');
+                        await loadAds();
+                    } catch (error) {
+                        console.error('광고 삭제 실패:', error);
+                        Notification.error('광고 삭제에 실패했습니다.');
+                    } finally {
+                        Loading.hide();
+                    }
+                }
+            );
+        }
+
+        // 이미지 미리보기 업데이트
+        function updateImagePreview(imageUrl) {
+            const preview = document.getElementById('imagePreview');
+            
+            if (imageUrl) {
+                preview.innerHTML = `<img src="${imageUrl}" alt="미리보기" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 5px;">`;
+            } else {
+                preview.innerHTML = '이미지 URL을 입력하면 미리보기가 표시됩니다';
+            }
+        }
+
+        // 이미지 URL 입력 시 미리보기 업데이트
+        document.getElementById('adImage').addEventListener('input', function() {
+            updateImagePreview(this.value);
+        });
+
+        // 이미지 로드 오류 처리
+        document.getElementById('imagePreview').addEventListener('error', function(e) {
+            if (e.target.tagName === 'IMG') {
+                e.target.parentElement.innerHTML = '이미지를 불러올 수 없습니다';
+            }
+        }, true);
+    </script>
+</body>
+</html> 

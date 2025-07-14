@@ -3,13 +3,22 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { NotificationProvider } from './components/Notification';
+import { ModalProvider } from './components/Modal';
+import { LoadingProvider } from './components/Loading';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <NotificationProvider>
+      <ModalProvider>
+        <LoadingProvider>
+          <App />
+        </LoadingProvider>
+      </ModalProvider>
+    </NotificationProvider>
   </React.StrictMode>
 );
 

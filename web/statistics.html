@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 통계 - 스마트 키오스크 관리자</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">🏪 스마트 키오스크 관리자</div>
+            <nav class="nav-links">
+                <a href="index.html">대시보드</a>
+                <a href="menus.html">메뉴 관리</a>
+                <a href="orders.html">주문 내역</a>
+                <a href="statistics.html" class="active">주문 통계</a>
+                <a href="advertisements.html">광고 관리</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card-header">
+            <h1 class="card-title">주문 통계</h1>
+            <button class="btn btn-secondary" onclick="refreshStatistics()">
+                🔄 새로고침
+            </button>
+        </div>
+
+        <!-- 기간 선택 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">기간 선택</h2>
+            </div>
+            <div class="grid grid-4">
+                <div class="form-group">
+                    <label class="form-label">기간 종류</label>
+                    <select class="form-select" id="periodType" onchange="updateDateInputs()">
+                        <option value="today">오늘</option>
+                        <option value="week">이번 주</option>
+                        <option value="month">이번 달</option>
+                        <option value="custom">사용자 정의</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">시작 날짜</label>
+                    <input type="date" class="form-control" id="startDate" onchange="loadStatistics()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">종료 날짜</label>
+                    <input type="date" class="form-control" id="endDate" onchange="loadStatistics()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">차트 종류</label>
+                    <select class="form-select" id="chartType" onchange="updateCharts()">
+                        <option value="bar">막대형</option>
+                        <option value="line">선형</option>
+                        <option value="pie">원형</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 주요 통계 카드 -->
+        <div class="grid grid-4">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOrdersCount">-</div>
+                <div class="stat-label">총 주문 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalRevenue">-</div>
+                <div class="stat-label">총 매출</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="averageOrderValue">-</div>
+                <div class="stat-label">평균 주문액</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completionRate">-</div>
+                <div class="stat-label">완료율</div>
+            </div>
+        </div>
+
+        <!-- 차트 섹션 -->
+        <div class="grid grid-2">
+            <!-- 일별 주문 수 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">일별 주문 수</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="dailyOrdersChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 상태별 주문 분포 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">상태별 주문 분포</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="statusDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <!-- 시간대별 주문 패턴 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">시간대별 주문 패턴</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="hourlyOrdersChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 인기 메뉴 순위 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">인기 메뉴 TOP 10</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="popularMenusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 매출 분석 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">매출 분석</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 상세 통계 테이블 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">상세 통계</h3>
+            </div>
+            <div id="detailStats" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        let statisticsData = {};
+        let charts = {};
+
+        // 페이지 로드 시 통계 로드
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDateInputs();
+            loadStatistics();
+        });
+
+        // 날짜 입력 필드 초기화
+        function initializeDateInputs() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            document.getElementById('startDate').value = todayStr;
+            document.getElementById('endDate').value = todayStr;
+            document.getElementById('startDate').disabled = true;
+            document.getElementById('endDate').disabled = true;
+        }
+
+        // 기간 종류 변경 시 날짜 입력 필드 업데이트
+        function updateDateInputs() {
+            const periodType = document.getElementById('periodType').value;
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            const today = new Date();
+            
+            if (periodType === 'custom') {
+                startDateInput.disabled = false;
+                endDateInput.disabled = false;
+            } else {
+                startDateInput.disabled = true;
+                endDateInput.disabled = true;
+                
+                let startDate = new Date(today);
+                let endDate = new Date(today);
+                
+                switch (periodType) {
+                    case 'today':
+                        // 오늘
+                        break;
+                    case 'week':
+                        // 이번 주 (월요일부터)
+                        const dayOfWeek = today.getDay();
+                        const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                        startDate = new Date(today.setDate(diff));
+                        endDate = new Date(today);
+                        break;
+                    case 'month':
+                        // 이번 달
+                        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        break;
+                }
+                
+                startDateInput.value = startDate.toISOString().split('T')[0];
+                endDateInput.value = endDate.toISOString().split('T')[0];
+            }
+            
+            loadStatistics();
+        }
+
+        // 통계 데이터 로드
+        async function loadStatistics() {
+            try {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                if (!startDate || !endDate) return;
+                
+                Loading.show();
+                
+                // 기본 통계 로드
+                const basicStats = await API.get(`/orders/stats/range?startDate=${startDate}&endDate=${endDate}`);
+                
+                // 시간대별 통계 로드
+                const hourlyStats = await API.get(`/orders/stats/hourly?startDate=${startDate}&endDate=${endDate}`);
+                
+                // 메뉴별 통계 로드
+                const menuStats = await API.get(`/orders/stats/menu?startDate=${startDate}&endDate=${endDate}`);
+                
+                // 일별 통계 로드
+                const dailyStats = await API.get(`/orders/stats/daily?startDate=${startDate}&endDate=${endDate}`);
+                
+                statisticsData = {
+                    basic: basicStats.data || { totalOrders: 0, totalRevenue: 0, averageOrderValue: 0, completionRate: 0, statusBreakdown: [] },
+                    hourly: hourlyStats.data || [],
+                    menu: menuStats.data || [],
+                    daily: dailyStats.data || []
+                };
+                
+                updateStatisticsCards();
+                updateCharts();
+                updateDetailTable();
+                
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+                console.error('Error details:', error);
+                Notification.error('통계 데이터를 불러오는데 실패했습니다: ' + error.message);
+                
+                // 기본값 설정
+                statisticsData = {
+                    basic: { totalOrders: 0, totalRevenue: 0, averageOrderValue: 0, completionRate: 0, statusBreakdown: [] },
+                    hourly: [],
+                    menu: [],
+                    daily: []
+                };
+                
+                updateStatisticsCards();
+                updateCharts();
+                updateDetailTable();
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 통계 카드 업데이트
+        function updateStatisticsCards() {
+            const { basic } = statisticsData;
+            
+            document.getElementById('totalOrdersCount').textContent = basic.totalOrders || 0;
+            document.getElementById('totalRevenue').textContent = Utils.formatPrice(basic.totalRevenue || 0);
+            document.getElementById('averageOrderValue').textContent = Utils.formatPrice(basic.averageOrderValue || 0);
+            document.getElementById('completionRate').textContent = `${basic.completionRate || 0}%`;
+        }
+
+        // 차트 업데이트
+        function updateCharts() {
+            const chartType = document.getElementById('chartType').value;
+            
+            // 기존 차트 삭제
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            
+            updateDailyOrdersChart(chartType);
+            updateStatusDistributionChart();
+            updateHourlyOrdersChart(chartType);
+            updatePopularMenusChart(chartType);
+            updateRevenueChart(chartType);
+        }
+
+        // 일별 주문 수 차트
+        function updateDailyOrdersChart(type) {
+            const ctx = document.getElementById('dailyOrdersChart').getContext('2d');
+            const { daily } = statisticsData;
+            
+            if (!daily || daily.length === 0) return;
+            
+            const labels = daily.map(d => d.date);
+            const data = daily.map(d => d.orderCount);
+            
+            charts.dailyOrders = new Chart(ctx, {
+                type: type === 'pie' ? 'bar' : type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '주문 수',
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 상태별 주문 분포 차트
+        function updateStatusDistributionChart() {
+            const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+            const { basic } = statisticsData;
+            
+            if (!basic || !basic.statusBreakdown) return;
+            
+            const labels = basic.statusBreakdown.map(s => Utils.getOrderStatusName(s._id));
+            const data = basic.statusBreakdown.map(s => s.count);
+            const colors = [
+                '#ffd43b', '#51cf66', '#40c057', '#667eea', '#ff6b6b'
+            ];
+            
+            charts.statusDistribution = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 시간대별 주문 패턴 차트
+        function updateHourlyOrdersChart(type) {
+            const ctx = document.getElementById('hourlyOrdersChart').getContext('2d');
+            const { hourly } = statisticsData;
+            
+            if (!hourly || hourly.length === 0) return;
+            
+            const labels = hourly.map(h => `${h.hour}시`);
+            const data = hourly.map(h => h.orderCount);
+            
+            charts.hourlyOrders = new Chart(ctx, {
+                type: type === 'pie' ? 'bar' : type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '주문 수',
+                        data: data,
+                        backgroundColor: 'rgba(64, 192, 87, 0.8)',
+                        borderColor: 'rgba(64, 192, 87, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 인기 메뉴 순위 차트
+        function updatePopularMenusChart(type) {
+            const ctx = document.getElementById('popularMenusChart').getContext('2d');
+            const { menu } = statisticsData;
+            
+            if (!menu || menu.length === 0) return;
+            
+            const top10 = menu.slice(0, 10);
+            const labels = top10.map(m => m.name);
+            const data = top10.map(m => m.totalQuantity);
+            
+            charts.popularMenus = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '주문 수량',
+                        data: data,
+                        backgroundColor: type === 'pie' ? [
+                            '#ff6b6b', '#51cf66', '#40c057', '#667eea', '#ffd43b',
+                            '#fab005', '#fd7e14', '#e64980', '#ae3ec9', '#7c2d12'
+                        ] : 'rgba(255, 107, 107, 0.8)',
+                        borderColor: 'rgba(255, 107, 107, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: type === 'pie' ? {} : {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: type === 'pie',
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 매출 분석 차트
+        function updateRevenueChart(type) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            const { daily } = statisticsData;
+            
+            if (!daily || daily.length === 0) return;
+            
+            const labels = daily.map(d => d.date);
+            const data = daily.map(d => d.revenue);
+            
+            charts.revenue = new Chart(ctx, {
+                type: type === 'pie' ? 'line' : type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '매출 (원)',
+                        data: data,
+                        backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                        borderColor: 'rgba(118, 75, 162, 1)',
+                        borderWidth: 1,
+                        fill: type === 'line' ? false : true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return Utils.formatPrice(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 상세 통계 테이블 업데이트
+        function updateDetailTable() {
+            const container = document.getElementById('detailStats');
+            const { menu } = statisticsData;
+            
+            if (!menu || menu.length === 0) {
+                container.innerHTML = '<p class="text-center">데이터가 없습니다.</p>';
+                return;
+            }
+            
+            const columns = [
+                { key: 'name', header: '메뉴명' },
+                { key: 'totalQuantity', header: '총 주문 수량' },
+                { key: 'totalRevenue', header: '총 매출', render: (value) => Utils.formatPrice(value) },
+                { key: 'averagePrice', header: '평균 단가', render: (value) => Utils.formatPrice(value) },
+                { key: 'orderCount', header: '주문 횟수' }
+            ];
+            
+            Table.render(container, menu, columns);
+        }
+
+        // 통계 새로고침
+        async function refreshStatistics() {
+            await loadStatistics();
+            Notification.success('통계가 새로고침되었습니다.');
+        }
+
+        // 차트 컨테이너 스타일
+        const chartStyle = `
+            .chart-container {
+                position: relative;
+                height: 300px;
+                margin: 1rem 0;
+            }
+            
+            .grid-2 .chart-container {
+                height: 250px;
+            }
+            
+            .card .chart-container {
+                height: 400px;
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = chartStyle;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

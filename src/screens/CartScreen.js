@@ -11,12 +11,13 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {CartContext} from '../contexts/CartContext';
 import {useVoice} from '../contexts/VoiceContext';
-import {findMenuItem} from '../data/menuData';
 import { API_BASE_URL } from '../config';
+import { useMenu } from '../contexts/MenuContext';
 
 const CartScreen = ({navigation}) => {
   const {cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice} = useContext(CartContext);
   const {endSession} = useVoice();
+  const { findMenuItem } = useMenu();
 
   const removeItem = itemToRemove => {
     Alert.alert('삭제 확인', '이 항목을 장바구니에서 삭제하시겠습니까?', [
@@ -41,9 +42,7 @@ const CartScreen = ({navigation}) => {
       `총 ${getTotalPrice().toLocaleString()}원을 결제하시겠습니까?`,
       [
         {text: '취소', style: 'cancel'},
-        {
-          text: '결제하기',
-          onPress: () => {
+        {text: '결제하기', onPress: () => {
             // 결제 로직
             Alert.alert('주문 완료', '주문이 접수되었습니다!');
             clearCart(); // 장바구니 비우기
@@ -56,7 +55,6 @@ const CartScreen = ({navigation}) => {
   };
 
   const handleItemPress = (item) => {
-    // 실제 menu data에서 item 찾기
     const menuItem = findMenuItem(item.name);
     if (!menuItem) {
       Alert.alert('오류', '메뉴 정보를 찾을 수 없습니다.');
@@ -64,7 +62,7 @@ const CartScreen = ({navigation}) => {
     }
 
     navigation.navigate('MenuDetail', {
-      item: menuItem, // 실제 menu data 사용 (options 포함)
+      item: menuItem,
       fromCart: true,
       originalCartItem: item,
       existingOptions: item.options,
@@ -82,8 +80,8 @@ const CartScreen = ({navigation}) => {
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemOptions}>
-          {item.options.size && `사이즈: ${item.options.size === 'small' ? '작은' : item.options.size === 'medium' ? '보통' : '큰'}`}
-          {item.options.temperature && `, ${item.options.temperature === 'hot' ? '따뜻한' : '차가운'}`}
+          {item.category !== '디저트' && item.options.size && `사이즈: ${item.options.size === 'small' ? '작은' : item.options.size === 'medium' ? '보통' : '큰'}`}
+          {item.category !== '디저트' && item.options.temperature && `, ${item.options.temperature === 'hot' ? '따뜻한' : '차가운'}`}
           {item.options.extras && item.options.extras.length > 0 && 
             `, 옵션: ${item.options.extras.join(', ')}`}
         </Text>
@@ -121,10 +119,10 @@ const CartScreen = ({navigation}) => {
             e.stopPropagation();
             removeItem(item);
           }}>
-          <Icon name="delete" size={24} color="#FF4444" />
+          <Icon name="delete" size={28} color="#FF4444" />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </TouchableOpacity >
   );
 
   return (
@@ -237,7 +235,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginHorizontal: 5, // 변경: 마진 조정
     fontWeight: 'bold',
-    minWidth: 30, // 추가: 최소 너비 설정
+    minWidth: 35, // 추가: 최소 너비 설정
     textAlign: 'center', // 추가: 텍스트 중앙 정렬
   },
   itemPriceSection: {

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 키오스크 관리자</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">🏪 스마트 키오스크 관리자</div>
+            <nav class="nav-links">
+                <a href="index.html" class="active">대시보드</a>
+                <a href="menus.html">메뉴 관리</a>
+                <a href="orders.html">주문 내역</a>
+                <a href="statistics.html">주문 통계</a>
+                <a href="advertisements.html">광고 관리</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>관리자 대시보드</h1>
+        
+        <!-- 통계 카드 -->
+        <div class="grid grid-4">
+            <div class="stat-card">
+                <div class="stat-number" id="totalMenus">-</div>
+                <div class="stat-label">전체 메뉴</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="availableMenus">-</div>
+                <div class="stat-label">판매 중인 메뉴</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="todayOrders">-</div>
+                <div class="stat-label">오늘 주문 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="todayRevenue">-</div>
+                <div class="stat-label">오늘 매출</div>
+            </div>
+        </div>
+
+        <!-- 빠른 액세스 메뉴 -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">빠른 메뉴</h2>
+                </div>
+                <div class="grid grid-2">
+                    <a href="menus.html" class="btn btn-success">
+                        📝 메뉴 관리
+                    </a>
+                    <a href="orders.html" class="btn btn-info">
+                        📋 주문 내역
+                    </a>
+                    <a href="advertisements.html" class="btn btn-warning">
+                        📢 광고 관리
+                    </a>
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 데이터 새로고침
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">시스템 상태</h2>
+                </div>
+                <div class="system-status">
+                    <div class="status-item">
+                        <span class="status-label">서버 상태:</span>
+                        <span class="badge badge-success">정상</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">데이터베이스:</span>
+                        <span class="badge badge-success">연결됨</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">마지막 업데이트:</span>
+                        <span id="lastUpdate">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최근 주문 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">최근 주문</h2>
+                <a href="orders.html" class="btn btn-sm">전체 보기</a>
+            </div>
+            <div id="recentOrders" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 품절 메뉴 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">품절 메뉴</h2>
+                <a href="menus.html" class="btn btn-sm">관리하기</a>
+            </div>
+            <div id="soldOutMenus" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 활성 광고 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">활성 광고</h2>
+                <a href="advertisements.html" class="btn btn-sm">관리하기</a>
+            </div>
+            <div id="activeAds" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        // 대시보드 데이터 로드
+        async function loadDashboardData() {
+            try {
+                // 통계 데이터 로드
+                await loadStatistics();
+                
+                // 최근 주문 로드
+                await loadRecentOrders();
+                
+                // 품절 메뉴 로드
+                await loadSoldOutMenus();
+                
+                // 활성 광고 로드
+                await loadActiveAds();
+                
+                // 마지막 업데이트 시간 설정
+                document.getElementById('lastUpdate').textContent = Utils.formatDate(new Date());
+                
+            } catch (error) {
+                console.error('대시보드 데이터 로드 실패:', error);
+                Notification.error('대시보드 데이터를 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 통계 데이터 로드
+        async function loadStatistics() {
+            try {
+                // 메뉴 통계
+                const menusData = await API.get('/menus');
+                const totalMenus = menusData.data.length;
+                const availableMenus = menusData.data.filter(menu => menu.isAvailable).length;
+                
+                document.getElementById('totalMenus').textContent = totalMenus;
+                document.getElementById('availableMenus').textContent = availableMenus;
+
+                // 오늘 주문 통계
+                const today = new Date().toISOString().split('T')[0];
+                const ordersData = await API.get(`/orders?date=${today}`);
+                const todayOrders = ordersData.data.length;
+                
+                // 오늘 매출 계산
+                const todayRevenue = ordersData.data.reduce((sum, order) => {
+                    return sum + (order.totalPrice || 0);
+                }, 0);
+                
+                document.getElementById('todayOrders').textContent = todayOrders;
+                document.getElementById('todayRevenue').textContent = Utils.formatPrice(todayRevenue);
+                
+            } catch (error) {
+                console.error('통계 데이터 로드 실패:', error);
+            }
+        }
+
+        // 최근 주문 로드
+        async function loadRecentOrders() {
+            try {
+                const ordersData = await API.get('/orders?limit=5');
+                const container = document.getElementById('recentOrders');
+                
+                if (ordersData.data.length === 0) {
+                    container.innerHTML = '<p class="text-center">최근 주문이 없습니다.</p>';
+                    return;
+                }
+
+                const columns = [
+                    { 
+                        key: 'orderId', 
+                        header: '주문번호',
+                        render: (value) => `#${value}`
+                    },
+                    { 
+                        key: 'items', 
+                        header: '메뉴',
+                        render: (items) => {
+                            const firstItem = items[0];
+                            const count = items.length;
+                            return count > 1 ? `${firstItem.name} 외 ${count-1}개` : firstItem.name;
+                        }
+                    },
+                    { 
+                        key: 'totalPrice', 
+                        header: '총 금액',
+                        render: (value) => Utils.formatPrice(value)
+                    },
+                    { 
+                        key: 'status', 
+                        header: '상태',
+                        render: (value) => `<span class="badge ${Utils.getOrderStatusBadge(value)}">${Utils.getOrderStatusName(value)}</span>`
+                    },
+                    { 
+                        key: 'createdAt', 
+                        header: '주문시간',
+                        render: (value) => Utils.formatDate(value)
+                    }
+                ];
+
+                Table.render(container, ordersData.data, columns);
+                
+            } catch (error) {
+                console.error('최근 주문 로드 실패:', error);
+                document.getElementById('recentOrders').innerHTML = '<p class="text-center">데이터를 불러올 수 없습니다.</p>';
+            }
+        }
+
+        // 품절 메뉴 로드
+        async function loadSoldOutMenus() {
+            try {
+                const menusData = await API.get('/menus?available=false');
+                const container = document.getElementById('soldOutMenus');
+                
+                if (menusData.data.length === 0) {
+                    container.innerHTML = '<p class="text-center">품절된 메뉴가 없습니다.</p>';
+                    return;
+                }
+
+                const columns = [
+                    { 
+                        key: 'image', 
+                        header: '이미지',
+                        render: (value) => value ? `<img src="${value}" alt="메뉴" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">` : '이미지 없음'
+                    },
+                    { key: 'name', header: '메뉴명' },
+                    { 
+                        key: 'category', 
+                        header: '카테고리',
+                        render: (value) => Utils.getCategoryName(value)
+                    },
+                    { 
+                        key: 'price', 
+                        header: '가격',
+                        render: (value) => Utils.formatPrice(value)
+                    }
+                ];
+
+                const actions = [
+                    {
+                        text: '판매 재개',
+                        class: 'btn-success',
+                        onClick: (menu) => toggleMenuAvailability(menu.id, true)
+                    }
+                ];
+
+                Table.render(container, menusData.data, columns, actions);
+                
+            } catch (error) {
+                console.error('품절 메뉴 로드 실패:', error);
+                document.getElementById('soldOutMenus').innerHTML = '<p class="text-center">데이터를 불러올 수 없습니다.</p>';
+            }
+        }
+
+        // 활성 광고 로드
+        async function loadActiveAds() {
+            try {
+                const adsData = await API.get('/advertisements?active=true');
+                const container = document.getElementById('activeAds');
+                
+                if (adsData.data.length === 0) {
+                    container.innerHTML = '<p class="text-center">활성 광고가 없습니다.</p>';
+                    return;
+                }
+
+                const columns = [
+                    { 
+                        key: 'image', 
+                        header: '이미지',
+                        render: (value) => value ? `<img src="${value}" alt="광고" style="width: 80px; height: 50px; object-fit: cover; border-radius: 5px;">` : '이미지 없음'
+                    },
+                    { key: 'title', header: '제목' },
+                    { key: 'description', header: '설명' },
+                    { 
+                        key: 'position', 
+                        header: '위치',
+                        render: (value) => value === 'main' ? '메인 화면' : '상세 화면'
+                    },
+                    { key: 'priority', header: '우선순위' }
+                ];
+
+                const actions = [
+                    {
+                        text: '비활성화',
+                        class: 'btn-warning',
+                        onClick: (ad) => toggleAdStatus(ad._id, false)
+                    }
+                ];
+
+                Table.render(container, adsData.data, columns, actions);
+                
+            } catch (error) {
+                console.error('활성 광고 로드 실패:', error);
+                document.getElementById('activeAds').innerHTML = '<p class="text-center">데이터를 불러올 수 없습니다.</p>';
+            }
+        }
+
+        // 메뉴 판매 상태 토글
+        async function toggleMenuAvailability(menuId, isAvailable) {
+            try {
+                Loading.show();
+                await API.put(`/menus/${menuId}`, { isAvailable });
+                Notification.success(`메뉴가 ${isAvailable ? '판매 재개' : '품절 처리'}되었습니다.`);
+                await loadSoldOutMenus();
+                await loadStatistics();
+            } catch (error) {
+                console.error('메뉴 상태 변경 실패:', error);
+                Notification.error('메뉴 상태를 변경하는데 실패했습니다.');
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 광고 상태 토글
+        async function toggleAdStatus(adId, isActive) {
+            try {
+                Loading.show();
+                await API.put(`/advertisements/${adId}`, { isActive });
+                Notification.success(`광고가 ${isActive ? '활성화' : '비활성화'}되었습니다.`);
+                await loadActiveAds();
+            } catch (error) {
+                console.error('광고 상태 변경 실패:', error);
+                Notification.error('광고 상태를 변경하는데 실패했습니다.');
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 데이터 새로고침
+        async function refreshData() {
+            Loading.show();
+            await loadDashboardData();
+            Loading.hide();
+            Notification.success('데이터가 새로고침되었습니다.');
+        }
+
+        // 시스템 상태 스타일
+        const systemStatusStyle = `
+            .system-status {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .status-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem;
+                background: #f8f9fa;
+                border-radius: 5px;
+            }
+            .status-label {
+                font-weight: 500;
+            }
+        `;
+
+        // 스타일 추가
+        const style = document.createElement('style');
+        style.textContent = systemStatusStyle;
+        document.head.appendChild(style);
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+    </script>
+</body>
+</html> 

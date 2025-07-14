@@ -1,30 +1,39 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import MenuManagement from './pages/MenuManagement';
-import './index.css'; // Tailwind CSS 및 기타 스타일
+import Orders from './pages/Orders';
+import Statistics from './pages/Statistics';
+import Advertisements from './pages/Advertisements';
+import './index.css';
 
 function App() {
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'menus', 'orders', 'statistics', 'advertisements'
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'menus':
+        return <MenuManagement />;
+      case 'orders':
+        return <Orders />;
+      case 'statistics':
+        return <Statistics />;
+      case 'advertisements':
+        return <Advertisements />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
   return (
-    <Router>
-      <header className="header">
-        <div className="header-container">
-          <div className="logo">🏪 스마트 키오스크 관리자</div>
-          <nav className="nav-links">
-            <Link to="/">대시보드</Link>
-            <Link to="/menus">메뉴 관리</Link>
-            {/* <Link to="/orders">주문 내역</Link> */}
-            {/* <Link to="/advertisements">광고 관리</Link> */}
-          </nav>
-        </div>
-      </header>
+    <>
+      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="container">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/menus" element={<MenuManagement />} />
-        </Routes>
+        {renderContent()}
       </div>
-    </Router>
+    </>
   );
 }
 

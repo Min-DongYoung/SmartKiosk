@@ -32,6 +32,7 @@ export const CartProvider = ({ children }) => {
     } else {
       // 음성에서 온 경우
       const menuItem = findMenuItem(item.name);
+      console.log('Menu item found by findMenuItem:', menuItem);
       if (!menuItem) {
         console.warn(`메뉴를 찾을 수 없음: ${item.name}`);
         return;
@@ -50,14 +51,22 @@ export const CartProvider = ({ children }) => {
           extras: item.options || [],
         },
         totalPrice: price * (item.quantity || 1),
+        category: menuItem.category,
+        description: menuItem.description,
+        imageUrl: menuItem.imageUrl,
       };
     }
 
     setCartItems(prevItems => {
       const existingItemIndex = prevItems.findIndex(
-        cartItem =>
-          cartItem.id === newItem.id &&
-          JSON.stringify(cartItem.options) === JSON.stringify(newItem.options),
+        cartItem => {
+
+          const isSameId = cartItem.id === newItem.id;
+          const isSameOptions = JSON.stringify(cartItem.options) === JSON.stringify(newItem.options);
+          const isSameNameForDessert = newItem.category === 'dessert' ? cartItem.name === newItem.name : true;
+
+          return isSameId && isSameOptions && isSameNameForDessert;
+        }
       );
 
       if (existingItemIndex > -1) {

@@ -63,7 +63,7 @@ const MenuDetailScreen = ({route, navigation}) => {
     if (!item) return;
 
     const itemToAdd = {
-      id: item._id, // MongoDB _id 사용
+      id: item.id, // MenuContext에서 매핑된 id 사용
       name: item.name,
       price: currentPrice,
       quantity: quantity,
@@ -89,7 +89,11 @@ const MenuDetailScreen = ({route, navigation}) => {
     if (sessionActive) {
       endSession();
     }
-    navigation.navigate('MenuList');
+    if (fromCart) {
+      navigation.goBack(); // 장바구니에서 왔으면 뒤로가기
+    } else {
+      navigation.navigate('MenuList'); // 그 외에는 메뉴 목록으로
+    }
   };
 
   if (!item) {

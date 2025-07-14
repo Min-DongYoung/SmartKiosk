@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 
 import { useMenu } from '../contexts/MenuContext';
+import QuickMenuItem from '../components/QuickMenuItem';
 
 const categories = [
+  'quick',
   'all',
   '커피',
   '라떼',
@@ -24,25 +26,33 @@ const categories = [
 import { API_BASE_URL } from '../config';
 
 const MenuListScreen = ({navigation}) => {
-  const { menus, loading, error } = useMenu();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const { menus, loading, error, quickMenus } = useMenu();
+  const [selectedCategory, setSelectedCategory] = useState('quick');
 
-  const renderMenuItem = ({item}) => (
-    <TouchableOpacity
-      style={styles.menuItem}
-      onPress={() => navigation.navigate('MenuDetail', {item, fromMenuList: true})}>
-      <Image source={{uri: `${API_BASE_URL.replace('/api', '')}/uploads/${item.imageUrl}`}} style={styles.menuImage} />
-      <View style={styles.menuInfo}>
-        <Text style={styles.menuName}>{item.name}</Text>
-        <Text style={styles.menuCategory}>{item.category}</Text>
-        <Text style={styles.menuPrice}>{item.price.toLocaleString()}원</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderMenuItem = ({item}) => {
+    if (selectedCategory === 'quick') {
+      return <QuickMenuItem item={item} navigation={navigation} />;
+    } else {
+      return (
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('MenuDetail', {item, fromMenuList: true})}>
+          <Image source={{uri: `${API_BASE_URL.replace('/api', '')}/uploads/${item.imageUrl}`}} style={styles.menuImage} />
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuName}>{item.name}</Text>
+            <Text style={styles.menuCategory}>{item.category}</Text>
+            <Text style={styles.menuPrice}>{item.price.toLocaleString()}원</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+  };
 
   const filteredMenuItems =
     selectedCategory === 'all'
       ? Object.values(menus)
+      : selectedCategory === 'quick'
+      ? quickMenus
       : Object.values(menus).filter(
           item => item.category === selectedCategory,
         );
@@ -92,7 +102,8 @@ const MenuListScreen = ({navigation}) => {
         data={filteredMenuItems}
         renderItem={renderMenuItem}
         keyExtractor={item => item.id}
-        numColumns={2}
+        key={selectedCategory} // Add key prop to force re-render on category change
+        numColumns={selectedCategory === 'quick' ? 1 : 2} // Quick 카테고리일 때 1열
         contentContainerStyle={styles.menuList}
       />
     </View>
@@ -170,9 +181,9 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   menuItem: {
-    flex: 1,
+    width: '48%', // 2열을 위해 너비 조정
     backgroundColor: 'white',
-    margin: 10,
+    margin: '1%', // 좌우 마진 조정
     padding: 15,
     borderRadius: 10,
     elevation: 2,
@@ -202,6 +213,79 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#4CAF50', // Green color for price
+  },
+  // Quick 메뉴 스타일
+  quickMenuItem: {
+    backgroundColor: 'white',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  quickMenuImage: {
+    width: 75,
+    height: 75,
+    borderRadius: 8,
+    marginRight: 10,
+    resizeMode: 'contain',
+  },
+  quickMenuInfo: {
+    flex: 1,
+  },
+  quickMenuName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
+  },
+  quickMenuPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 5,
+  },
+  quickMenuControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  quickQuantityButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 15,
+    backgroundColor: '#e8e8e8',
+  },
+  quickQuantityButtonText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  quickQuantityText: {
+    fontSize: 15,
+    color: '#333',
+    marginHorizontal: 10,
+    fontWeight: 'bold',
+  },
+  quickPayButton: {
+    backgroundColor: '#FFC107',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginLeft: 10,
+  },
+  quickPayButtonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메뉴 관리 - 스마트 키오스크 관리자</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">🏪 스마트 키오스크 관리자</div>
+            <nav class="nav-links">
+                <a href="index.html">대시보드</a>
+                <a href="menus.html" class="active">메뉴 관리</a>
+                <a href="orders.html">주문 내역</a>
+                <a href="statistics.html">주문 통계</a>
+                <a href="advertisements.html">광고 관리</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card-header">
+            <h1 class="card-title">메뉴 관리</h1>
+            <button class="btn btn-success" onclick="showAddMenuModal()">
+                ➕ 새 메뉴 추가
+            </button>
+        </div>
+
+        <!-- 필터 및 검색 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">필터 및 검색</h2>
+                <button class="btn btn-sm btn-secondary" onclick="resetFilters()">
+                    🔄 필터 초기화
+                </button>
+            </div>
+            <div class="grid grid-4">
+                <div class="form-group">
+                    <label class="form-label">카테고리</label>
+                    <select class="form-select" id="categoryFilter" onchange="applyFilters()">
+                        <option value="">전체 카테고리</option>
+                        <option value="커피">커피</option>
+                        <option value="티">티</option>
+                        <option value="스무디">스무디</option>
+                        <option value="라떼">라떼</option>
+                        <option value="에이드">에이드</option>
+                        <option value="디저트">디저트</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">판매 상태</label>
+                    <select class="form-select" id="availabilityFilter" onchange="applyFilters()">
+                        <option value="">전체 상태</option>
+                        <option value="true">판매 중</option>
+                        <option value="false">품절</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">메뉴명 검색</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="메뉴명을 입력하세요" onkeyup="applyFilters()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">가격 범위</label>
+                    <select class="form-select" id="priceRangeFilter" onchange="applyFilters()">
+                        <option value="">전체 가격</option>
+                        <option value="0-3000">0 - 3,000원</option>
+                        <option value="3000-5000">3,000 - 5,000원</option>
+                        <option value="5000-10000">5,000 - 10,000원</option>
+                        <option value="10000-999999">10,000원 이상</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메뉴 통계 -->
+        <div class="grid grid-4">
+            <div class="stat-card">
+                <div class="stat-number" id="totalMenusCount">-</div>
+                <div class="stat-label">전체 메뉴</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="availableMenusCount">-</div>
+                <div class="stat-label">판매 중</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="soldOutMenusCount">-</div>
+                <div class="stat-label">품절</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="averagePrice">-</div>
+                <div class="stat-label">평균 가격</div>
+            </div>
+        </div>
+
+        <!-- 메뉴 목록 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">메뉴 목록</h2>
+                <div class="d-flex gap-2">
+                    <select class="form-select" id="sortBy" onchange="applyFilters()" style="width: 200px;">
+                        <option value="name">이름순</option>
+                        <option value="price">가격순</option>
+                        <option value="category">카테고리순</option>
+                        <option value="updatedAt">최근 수정순</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleSortOrder()">
+                        <span id="sortOrderText">⬆️</span>
+                    </button>
+                </div>
+            </div>
+            <div id="menusList" class="table-responsive">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메뉴 추가/수정 모달 -->
+    <div id="menuModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="modal-close" onclick="closeMenuModal()">&times;</span>
+            <h2 id="modalTitle">새 메뉴 추가</h2>
+            
+            <form id="menuForm" onsubmit="submitMenu(event)">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">메뉴 ID *</label>
+                        <input type="text" class="form-control" id="menuId" required>
+                        <small>영문, 숫자, 하이픈만 사용 가능</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">메뉴명 *</label>
+                        <input type="text" class="form-control" id="menuName" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">카테고리 *</label>
+                        <select class="form-select" id="menuCategory" required>
+                            <option value="">카테고리 선택</option>
+                            <option value="커피">커피</option>
+                            <option value="티">티</option>
+                            <option value="스무디">스무디</option>
+                            <option value="라떼">라떼</option>
+                            <option value="에이드">에이드</option>
+                            <option value="디저트">디저트</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">가격 *</label>
+                        <input type="number" class="form-control" id="menuPrice" required min="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">설명</label>
+                    <textarea class="form-control" id="menuDescription" rows="3" placeholder="메뉴 설명을 입력하세요"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">이미지 URL</label>
+                    <input type="url" class="form-control" id="menuImage" placeholder="이미지 URL을 입력하세요">
+                    <small>예: /img/coffee/아메리카노.jpg</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">옵션 설정</label>
+                    <div class="grid grid-3">
+                        <div>
+                            <label class="form-label">사이즈</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" value="small"> 스몰</label>
+                                <label><input type="checkbox" value="medium"> 미디엄</label>
+                                <label><input type="checkbox" value="large"> 라지</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label">온도</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" value="hot"> HOT</label>
+                                <label><input type="checkbox" value="ice"> ICE</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label">추가 옵션</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" value="extra-shot"> 샷 추가</label>
+                                <label><input type="checkbox" value="decaf"> 디카페인</label>
+                                <label><input type="checkbox" value="soy-milk"> 두유</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">판매 상태</label>
+                    <select class="form-select" id="menuAvailability">
+                        <option value="true">판매 중</option>
+                        <option value="false">품절</option>
+                    </select>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="closeMenuModal()">
+                        취소
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        let allMenus = [];
+        let filteredMenus = [];
+        let sortOrder = 'asc';
+        let currentEditingMenu = null;
+
+        // 페이지 로드 시 메뉴 목록 로드
+        document.addEventListener('DOMContentLoaded', loadMenus);
+
+        // 메뉴 목록 로드
+        async function loadMenus() {
+            try {
+                Loading.show('#menusList');
+                const response = await API.get('/menus');
+                allMenus = response.data;
+                filteredMenus = [...allMenus];
+                
+                renderMenus();
+                updateStatistics();
+                
+            } catch (error) {
+                console.error('메뉴 로드 실패:', error);
+                Notification.error('메뉴 목록을 불러오는데 실패했습니다.');
+            } finally {
+                Loading.hide('#menusList');
+            }
+        }
+
+        // 메뉴 렌더링
+        function renderMenus() {
+            const container = document.getElementById('menusList');
+            
+            if (filteredMenus.length === 0) {
+                container.innerHTML = '<p class="text-center">조건에 맞는 메뉴가 없습니다.</p>';
+                return;
+            }
+
+            const columns = [
+                { 
+                    key: 'image', 
+                    header: '이미지',
+                    render: (value) => value ? 
+                        `<img src="${value}" alt="메뉴" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px;">` : 
+                        '<div style="width: 60px; height: 60px; background: #f0f0f0; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px;">이미지<br>없음</div>'
+                },
+                { key: 'name', header: '메뉴명' },
+                { 
+                    key: 'category', 
+                    header: '카테고리',
+                    render: (value) => Utils.getCategoryName(value)
+                },
+                { 
+                    key: 'price', 
+                    header: '가격',
+                    render: (value) => Utils.formatPrice(value)
+                },
+                { 
+                    key: 'isAvailable', 
+                    header: '판매 상태',
+                    render: (value) => value ? 
+                        '<span class="badge badge-success">판매 중</span>' : 
+                        '<span class="badge badge-danger">품절</span>'
+                },
+                { 
+                    key: 'options', 
+                    header: '옵션',
+                    render: (value) => {
+                        const optionCount = (value.size?.length || 0) + (value.temperature?.length || 0) + (value.extras?.length || 0);
+                        return optionCount > 0 ? `${optionCount}개` : '없음';
+                    }
+                },
+                { 
+                    key: 'updatedAt', 
+                    header: '최근 수정',
+                    render: (value) => Utils.formatDate(value)
+                }
+            ];
+
+            const actions = [
+                {
+                    text: '수정',
+                    class: 'btn-primary',
+                    onClick: (menu) => editMenu(menu)
+                },
+                {
+                    text: menu => menu.isAvailable ? '품절' : '판매',
+                    class: menu => menu.isAvailable ? 'btn-warning' : 'btn-success',
+                    onClick: (menu) => toggleMenuAvailability(menu)
+                },
+                {
+                    text: '삭제',
+                    class: 'btn-danger',
+                    onClick: (menu) => deleteMenu(menu)
+                }
+            ];
+
+            Table.render(container, filteredMenus, columns, actions);
+        }
+
+        // 통계 업데이트
+        function updateStatistics() {
+            const total = allMenus.length;
+            const available = allMenus.filter(menu => menu.isAvailable).length;
+            const soldOut = total - available;
+            const averagePrice = total > 0 ? Math.round(allMenus.reduce((sum, menu) => sum + menu.price, 0) / total) : 0;
+
+            document.getElementById('totalMenusCount').textContent = total;
+            document.getElementById('availableMenusCount').textContent = available;
+            document.getElementById('soldOutMenusCount').textContent = soldOut;
+            document.getElementById('averagePrice').textContent = Utils.formatPrice(averagePrice);
+        }
+
+        // 필터 적용
+        function applyFilters() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const availabilityFilter = document.getElementById('availabilityFilter').value;
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const priceRangeFilter = document.getElementById('priceRangeFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            filteredMenus = allMenus.filter(menu => {
+                // 카테고리 필터
+                if (categoryFilter && menu.category !== categoryFilter) return false;
+                
+                // 판매 상태 필터
+                if (availabilityFilter && menu.isAvailable.toString() !== availabilityFilter) return false;
+                
+                // 검색 필터
+                if (searchInput && !menu.name.toLowerCase().includes(searchInput)) return false;
+                
+                // 가격 범위 필터
+                if (priceRangeFilter) {
+                    const [min, max] = priceRangeFilter.split('-').map(Number);
+                    if (menu.price < min || menu.price > max) return false;
+                }
+                
+                return true;
+            });
+
+            // 정렬 적용
+            applySorting(sortBy);
+            
+            renderMenus();
+        }
+
+        // 정렬 적용
+        function applySorting(sortBy) {
+            filteredMenus.sort((a, b) => {
+                let aValue = a[sortBy];
+                let bValue = b[sortBy];
+                
+                if (sortBy === 'updatedAt') {
+                    aValue = new Date(aValue);
+                    bValue = new Date(bValue);
+                }
+                
+                if (sortOrder === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+        }
+
+        // 정렬 순서 토글
+        function toggleSortOrder() {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            document.getElementById('sortOrderText').textContent = sortOrder === 'asc' ? '⬆️' : '⬇️';
+            applyFilters();
+        }
+
+        // 필터 초기화
+        function resetFilters() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('availabilityFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('priceRangeFilter').value = '';
+            document.getElementById('sortBy').value = 'name';
+            sortOrder = 'asc';
+            document.getElementById('sortOrderText').textContent = '⬆️';
+            applyFilters();
+        }
+
+        // 메뉴 추가 모달 표시
+        function showAddMenuModal() {
+            currentEditingMenu = null;
+            document.getElementById('modalTitle').textContent = '새 메뉴 추가';
+            document.getElementById('menuForm').reset();
+            document.getElementById('menuId').disabled = false;
+            document.getElementById('menuModal').style.display = 'block';
+        }
+
+        // 메뉴 수정
+        function editMenu(menu) {
+            currentEditingMenu = menu;
+            document.getElementById('modalTitle').textContent = '메뉴 수정';
+            
+            // 폼 필드 채우기
+            document.getElementById('menuId').value = menu.id;
+            document.getElementById('menuId').disabled = true;
+            document.getElementById('menuName').value = menu.name;
+            document.getElementById('menuCategory').value = menu.category;
+            document.getElementById('menuPrice').value = menu.price;
+            document.getElementById('menuDescription').value = menu.description || '';
+            document.getElementById('menuImage').value = menu.image || '';
+            document.getElementById('menuAvailability').value = menu.isAvailable.toString();
+            
+            // 옵션 체크박스 설정
+            const sizeCheckboxes = document.querySelectorAll('[value="small"], [value="medium"], [value="large"]');
+            sizeCheckboxes.forEach(cb => {
+                cb.checked = menu.options.size?.includes(cb.value) || false;
+            });
+            
+            const tempCheckboxes = document.querySelectorAll('[value="hot"], [value="ice"]');
+            tempCheckboxes.forEach(cb => {
+                cb.checked = menu.options.temperature?.includes(cb.value) || false;
+            });
+            
+            const extraCheckboxes = document.querySelectorAll('[value="extra-shot"], [value="decaf"], [value="soy-milk"]');
+            extraCheckboxes.forEach(cb => {
+                cb.checked = menu.options.extras?.includes(cb.value) || false;
+            });
+            
+            document.getElementById('menuModal').style.display = 'block';
+        }
+
+        // 메뉴 모달 닫기
+        function closeMenuModal() {
+            document.getElementById('menuModal').style.display = 'none';
+            currentEditingMenu = null;
+        }
+
+        // 메뉴 저장
+        async function submitMenu(event) {
+            event.preventDefault();
+            
+            try {
+                Loading.show();
+                
+                const formData = {
+                    id: document.getElementById('menuId').value,
+                    name: document.getElementById('menuName').value,
+                    category: document.getElementById('menuCategory').value,
+                    price: parseInt(document.getElementById('menuPrice').value),
+                    description: document.getElementById('menuDescription').value,
+                    image: document.getElementById('menuImage').value,
+                    isAvailable: document.getElementById('menuAvailability').value === 'true',
+                    options: {
+                        size: Array.from(document.querySelectorAll('#sizeOptions input[type="checkbox"]'))
+                            .filter(cb => cb.checked)
+                            .map(cb => cb.value),
+                        temperature: Array.from(document.querySelectorAll('#temperatureOptions input[type="checkbox"]'))
+                            .filter(cb => cb.checked)
+                            .map(cb => cb.value),
+                        extras: Array.from(document.querySelectorAll('#extraOptions input[type="checkbox"]'))
+                            .filter(cb => cb.checked)
+                            .map(cb => cb.value)
+                    }
+                };
+                
+                if (currentEditingMenu) {
+                    // 수정
+                    await API.put(`/menus/${currentEditingMenu.id}`, formData);
+                    Notification.success('메뉴가 성공적으로 수정되었습니다.');
+                } else {
+                    // 추가
+                    await API.post('/menus', formData);
+                    Notification.success('메뉴가 성공적으로 추가되었습니다.');
+                }
+                
+                closeMenuModal();
+                await loadMenus();
+                
+            } catch (error) {
+                console.error('메뉴 저장 실패:', error);
+                Notification.error('메뉴 저장에 실패했습니다: ' + error.message);
+            } finally {
+                Loading.hide();
+            }
+        }
+
+        // 메뉴 판매 상태 토글
+        async function toggleMenuAvailability(menu) {
+            const newStatus = !menu.isAvailable;
+            const action = newStatus ? '판매 재개' : '품절 처리';
+            
+            Modal.confirm(
+                '판매 상태 변경',
+                `'${menu.name}' 메뉴를 ${action}하시겠습니까?`,
+                async () => {
+                    try {
+                        Loading.show();
+                        await API.put(`/menus/${menu.id}`, { isAvailable: newStatus });
+                        Notification.success(`메뉴가 ${action}되었습니다.`);
+                        await loadMenus();
+                    } catch (error) {
+                        console.error('메뉴 상태 변경 실패:', error);
+                        Notification.error('메뉴 상태 변경에 실패했습니다.');
+                    } finally {
+                        Loading.hide();
+                    }
+                }
+            );
+        }
+
+        // 메뉴 삭제
+        async function deleteMenu(menu) {
+            Modal.confirm(
+                '메뉴 삭제',
+                `'${menu.name}' 메뉴를 삭제하시겠습니까?<br><strong>이 작업은 되돌릴 수 없습니다.</strong>`,
+                async () => {
+                    try {
+                        Loading.show();
+                        await API.delete(`/menus/${menu.id}`);
+                        Notification.success('메뉴가 성공적으로 삭제되었습니다.');
+                        await loadMenus();
+                    } catch (error) {
+                        console.error('메뉴 삭제 실패:', error);
+                        Notification.error('메뉴 삭제에 실패했습니다.');
+                    } finally {
+                        Loading.hide();
+                    }
+                }
+            );
+        }
+
+        // 체크박스 그룹 스타일
+        const checkboxStyle = `
+            .checkbox-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .checkbox-group label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: normal;
+                cursor: pointer;
+            }
+            .checkbox-group input[type="checkbox"] {
+                width: auto;
+                margin: 0;
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = checkboxStyle;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 
