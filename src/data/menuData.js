@@ -16,7 +16,7 @@ export const menuItems = {
     name: '카페라떼',
     price: 4500,
     description: '부드러운 우유와 에스프레소의 조화',
-    category: 'coffee',
+    category: 'latte',
     image: 'https://example.com/cafelatte.jpg',
     options: {
       size: ['small', 'medium', 'large'],
@@ -28,7 +28,7 @@ export const menuItems = {
     name: '카푸치노',
     price: 5000,
     description: '진한 에스프레소와 거품 우유',
-    category: 'coffee',
+    category: 'latte',
     image: 'https://example.com/cappuccino.jpg',
     options: {
       size: ['small', 'medium', 'large'],
@@ -52,7 +52,7 @@ export const menuItems = {
     name: '초코라떼',
     price: 5000,
     description: '달콤한 초콜릿과 우유의 조화',
-    category: 'non-coffee',
+    category: 'latte',
     image: 'https://example.com/chocolate.jpg',
     options: {
       size: ['small', 'medium', 'large'],
@@ -64,7 +64,7 @@ export const menuItems = {
     name: '그린티라떼',
     price: 5500,
     description: '부드러운 녹차와 우유',
-    category: 'non-coffee',
+    category: 'latte',
     image: 'https://example.com/greentea.jpg',
     options: {
       size: ['small', 'medium', 'large'],
@@ -76,7 +76,7 @@ export const menuItems = {
     name: '밀크티',
     price: 4500,
     description: '홍차와 우유의 클래식한 조화',
-    category: 'non-coffee',
+    category: 'tea',
     image: 'https://example.com/milktea.jpg',
     options: {
       size: ['small', 'medium', 'large'],

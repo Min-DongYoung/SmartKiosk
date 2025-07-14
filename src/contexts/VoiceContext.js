@@ -1,109 +1,138 @@
-import React, { createContext, useState, useEffect, useContext, useRef, useCallback, useMemo } from 'react';
-import Voice from '@react-native-community/voice';
+import React, { createContext, useState, useEffect, useRef, useCallback, useContext } from 'react';
 import Tts from 'react-native-tts';
-import { AppState } from 'react-native';
-import { processVoiceWithGemini, getRecommendations } from '../services/geminiService';
+import Voice from '@react-native-community/voice';
+import { useNavigation } from '@react-navigation/native';
+import { Alert } from 'react-native';
+
+import { voiceService } from '../services/voiceService';
+import { useMenu } from './MenuContext';
 import { CartContext } from './CartContext';
-import { navigate } from '../navigation/navigationService';
-import { findMenuItem } from '../data/menuData';
 
 export const VoiceContext = createContext();
 
-const SESSION_TIMEOUT = 30000; // 30초
-
 export const VoiceProvider = ({ children }) => {
-  const { addToCart, clearCart, removeItem, cartItems } = useContext(CartContext);
-
-  // --- 상태 관리 ---
   const [isListening, setIsListening] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [recognizedText, setRecognizedText] = useState('');
-  const [error, setError] = useState('');
-  
-  // 세션 및 대화 상태
-  const [sessionActive, setSessionActive] = useState(false);
-  const [sessionState, setSessionState] = useState('idle'); // idle, continuous, waiting_confirm
+  const [isProcessing, setIsProcessing] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionState, setSessionState] = useState('idle'); // idle, continuous, waiting_confirm, reviewing_order
   const [pendingOrders, setPendingOrders] = useState([]);
 
-  // --- Ref 관리 ---
+  const navigation = useNavigation();
   const sessionTimerRef = useRef(null);
-  const isMounted = useRef(true);
 
-  // --- 음성 인식/TTS 초기화 및 이벤트 리스너 설정 ---
+  const { addToCart, clearCart, removeItem, cartItems, createOrder } = useContext(CartContext);
+  const { findMenuItem } = useMenu();
+
+  // TTS 설정
   useEffect(() => {
-    const setupVoice = () => {
-      Voice.onSpeechStart = () => {
-        if (isMounted.current) {
-          console.log('음성 인식 시작');
-          setIsListening(true);
-          setRecognizedText('');
-        }
-      };
-      Voice.onSpeechEnd = () => {
-        if (isMounted.current) {
-          console.log('음성 인식 종료');
-          setIsListening(false);
-        }
-      };
-      Voice.onSpeechError = (e) => {
-        if (isMounted.current) {
-          console.error('음성 인식 오류:', e.error);
-          setError(e.error?.message || '음성 인식 오류');
-          speak('죄송합니다, 잘 듣지 못했어요. 다시 말씀해 주시겠어요?');
-          setIsListening(false);
-        }
-      };
-      Voice.onSpeechResults = (e) => {
-        if (isMounted.current && e.value && e.value[0]) {
-          console.log('음성 인식 결과:', e.value[0]);
-          setRecognizedText(e.value[0]);
-        }
-      };
-    };
-
-    const teardownVoice = () => {
-      Voice.destroy().catch(e => console.error('Voice 해제 오류:', e));
-    };
-
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        if (isListening) {
-          stopListening();
-        }
-        endSession();
-      }
-    };
-    
     Tts.setDefaultLanguage('ko-KR');
-    setupVoice();
-    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+    Tts.setDefaultRate(0.5);
+    Tts.setDucking(true);
+
+    Tts.addEventListener('tts-start', event => console.log("start", event));
+    Tts.addEventListener('tts-finish', event => console.log("finish", event));
+    Tts.addEventListener('tts-cancel', event => console.log("cancel", event));
 
     return () => {
-      isMounted.current = false;
-      teardownVoice();
-      appStateSubscription.remove();
-      if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+      Tts.removeEventListener('tts-start');
+      Tts.removeEventListener('tts-finish');
+      Tts.removeEventListener('tts-cancel');
     };
   }, []);
 
-  // --- 세션 관리 ---
-  const startSession = useCallback(() => {
-    if (sessionActive) {
-      console.log('세션 갱신');
-      clearTimeout(sessionTimerRef.current);
+  // 음성 인식 설정
+  useEffect(() => {
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const onSpeechStart = useCallback(e => {
+    console.log('onSpeechStart: ', e);
+    setIsListening(true);
+    setRecognizedText('');
+    setIsProcessing(false);
+  }, []);
+
+  const onSpeechEnd = useCallback(e => {
+    console.log('onSpeechEnd: ', e);
+    setIsListening(false);
+  }, []);
+
+  const onSpeechResults = useCallback(e => {
+    console.log('onSpeechResults: ', e);
+    if (e.value && e.value.length > 0) {
+      const text = e.value[0];
+      setRecognizedText(text);
+      processCommand(text); // 음성 인식 완료 후 명령 처리
+    }
+  }, [processCommand]);
+
+  const onSpeechError = useCallback(e => {
+    console.log('onSpeechError: ', e);
+    setIsListening(false);
+    setIsProcessing(false);
+    if (e.error && e.error.message.includes('No match')) {
+      // 사용자가 아무 말도 하지 않았을 때
+      speak('다시 말씀해 주시겠어요?');
     } else {
-      console.log('새로운 세션 시작');
+      speak('음성 인식에 오류가 발생했습니다.');
+    }
+  }, []);
+
+  const speak = useCallback(async text => {
+    Tts.stop();
+    await Tts.speak(text);
+  }, []);
+
+  const startListening = useCallback(async () => {
+    try {
+      setRecognizedText('');
+      setIsProcessing(false);
+      await Voice.start('ko-KR');
+      startSession();
+    } catch (e) {
+      console.error(e);
+    }
+  }, [startSession]);
+
+  const stopListening = useCallback(async () => {
+    try {
+      await Voice.stop();
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const clearRecognizedText = useCallback(() => {
+    setRecognizedText('');
+  }, []);
+
+  const startSession = useCallback(() => {
+    if (!sessionActive) {
       setSessionActive(true);
+      setSessionState('continuous');
       setConversationHistory([]);
       setPendingOrders([]);
-      setSessionState('idle');
-      speak('안녕하세요! 무엇을 도와드릴까요?');
+      speak('무엇을 도와드릴까요?');
     }
-    sessionTimerRef.current = setTimeout(endSession, SESSION_TIMEOUT);
-  }, [sessionActive]);
+    // 세션 타이머 재설정
+    if (sessionTimerRef.current) {
+      clearTimeout(sessionTimerRef.current);
+    }
+    sessionTimerRef.current = setTimeout(() => {
+      endSession();
+    }, 60000); // 1분 동안 활동 없으면 세션 종료
+  }, [sessionActive, endSession, speak]);
 
-  const endSession = useCallback(() => {
+  const endSession = useCallback(async () => {
     console.log('세션 종료');
     if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
     setSessionActive(false);
@@ -111,39 +140,26 @@ export const VoiceProvider = ({ children }) => {
     setIsListening(false);
     setIsProcessing(false);
     setRecognizedText('');
+    setConversationHistory([]);
+    setPendingOrders([]);
+    
+    // 음성 서비스 세션 초기화
+    await voiceService.clearSession();
+    
     if (cartItems.length > 0) {
-        speak('주문이 완료되었습니다. 이용해주셔서 감사합니다.');
+      speak('주문이 완료되었습니다. 이용해주셔서 감사합니다.');
+    } else {
+      speak('다음에 또 이용해주세요.');
     }
-  }, [cartItems]);
+  }, [cartItems, speak]);
 
-  // --- 음성 명령 처리 ---
-  const startListening = async () => {
-    if (isProcessing) return;
-    try {
-      await Voice.start('ko-KR');
-      startSession();
-    } catch (e) {
-      console.error('음성 인식 시작 오류:', e);
-      setError('마이크를 시작할 수 없습니다.');
-    }
-  };
+  const navigate = useCallback((screenName, params) => {
+    navigation.navigate(screenName, params);
+  }, [navigation]);
 
-  const stopListening = async () => {
-    try {
-      await Voice.stop();
-    } catch (e) {
-      console.error('음성 인식 중지 오류:', e);
-    } finally {
-        setIsListening(false);
-    }
-  };
-
-  const speak = (message) => {
-    Tts.stop();
-    Tts.speak(message);
-  };
-
-
+  const showRecommendations = useCallback(() => {
+    navigation.navigate('RecommendationModal');
+  }, [navigation]);
 
   const processCommand = useCallback(async (command) => {
     if (!command) return;
@@ -151,53 +167,75 @@ export const VoiceProvider = ({ children }) => {
     setIsProcessing(true);
     startSession();
 
-    const contextInfo = {
-      cart: { items: cartItems, totalPrice: cartItems.reduce((sum, item) => sum + item.totalPrice, 0) },
-      sessionState,
-      pendingOrders,
-    };
+    try {
+      // 서버에 음성 처리 요청
+      const contextInfo = {
+        cart: { 
+          items: cartItems, 
+          totalPrice: cartItems.reduce((sum, item) => sum + item.totalPrice, 0) 
+        },
+        sessionState,
+        pendingOrders,
+      };
 
-    setConversationHistory(prev => [...prev, { role: 'user', content: command }]);
+      const response = await voiceService.processVoiceCommand({
+        voiceInput: command,
+        conversationHistory,
+        contextInfo
+      });
 
-    const result = await processVoiceWithGemini(command, conversationHistory, contextInfo);
-    
-    setConversationHistory(prev => [...prev, { role: 'assistant', content: result.response }]);
-    
-    speak(result.response);
-    handleGeminiResponse(result);
+      if (response.success) {
+        const result = response.data;
+        
+        setConversationHistory(prev => [
+          ...prev, 
+          { role: 'user', content: command },
+          { role: 'assistant', content: result.response }
+        ]);
+        
+        speak(result.response);
+        handleServerResponse(result);
+      } else {
+        throw new Error(response.error || '서버 응답 오류');
+      }
+    } catch (error) {
+      console.error('음성 처리 오류:', error);
+      speak('죄송합니다. 음성 명령을 처리할 수 없습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [cartItems, sessionState, pendingOrders, conversationHistory, startSession, speak, handleServerResponse]);
 
-    setIsProcessing(false);
-  }, [cartItems, sessionState, pendingOrders, conversationHistory, startSession]);
-
-  const handleGeminiResponse = (result) => {
+  const handleServerResponse = useCallback(async (result) => {
     if (result.items && result.items.length > 1) {
-        const [firstItem, ...remainingItems] = result.items;
-        result.items = [firstItem];
-        setPendingOrders(remainingItems.map(item => ({ ...item, summary: `${item.name} ${item.quantity}개` })));
+      const [firstItem, ...remainingItems] = result.items;
+      result.items = [firstItem];
+      setPendingOrders(remainingItems.map(item => ({
+        ...item,
+        summary: `${item.name} ${item.quantity}개`
+      })));
     }
 
     switch (result.action) {
       case 'order':
         if (result.items && result.items.length > 0) {
           const firstItem = result.items[0];
-          
-          // 실제 메뉴 데이터에서 아이템 찾기
           const menuItem = findMenuItem(firstItem.name);
+          
           if (!menuItem) {
             console.warn(`메뉴를 찾을 수 없음: ${firstItem.name}`);
             speak('죄송합니다. 해당 메뉴를 찾을 수 없습니다.');
             return;
           }
           
-          // MenuDetailScreen으로 이동하여 옵션 확인
           navigate('MenuDetail', {
-            item: menuItem, // 실제 메뉴 데이터 사용
-            fromVoice: true,    // 음성 안내용
-            fromCart: false,    // Cart에서 온 것이 아님
-            fromMenuList: false, // MenuList에서 온 것이 아님 (Home에서 음성으로)
+            item: menuItem,
+            fromVoice: true,
+            fromCart: false,
+            fromMenuList: false,
             existingOptions: {
-              size: firstItem.size || 'medium',
-              temperature: firstItem.temperature || 'iced'
+              size: firstItem.size || menuItem.sizeOptions?.[0] || 'medium', // sizeOptions 사용
+              temperature: firstItem.temperature || menuItem.temperatureOptions?.[0] || 'hot', // temperatureOptions 사용
             },
             existingQuantity: firstItem.quantity || 1
           });
@@ -207,19 +245,19 @@ export const VoiceProvider = ({ children }) => {
       
       case 'confirm':
         if (pendingOrders.length > 0) {
-            const orderToProcess = pendingOrders[0];
-            addToCart(orderToProcess);
-            const remaining = pendingOrders.slice(1);
-            setPendingOrders(remaining);
-            if (remaining.length > 0) {
-                setSessionState('waiting_confirm');
-                speak(`다음 주문 ${remaining[0].summary}을 추가할까요?`);
-            } else {
-                setSessionState('continuous');
-                speak('모든 주문을 담았습니다. 추가 주문 있으신가요?');
-            }
-        } else {
+          const orderToProcess = pendingOrders[0];
+          addToCart(orderToProcess);
+          const remaining = pendingOrders.slice(1);
+          setPendingOrders(remaining);
+          if (remaining.length > 0) {
+            setSessionState('waiting_confirm');
+            speak(`다음 주문 ${remaining[0].summary}을 추가할까요?`);
+          } else {
             setSessionState('continuous');
+            speak('모든 주문을 담았습니다. 추가 주문 있으신가요?');
+          }
+        } else {
+          setSessionState('continuous');
         }
         break;
 
@@ -232,8 +270,19 @@ export const VoiceProvider = ({ children }) => {
         break;
 
       case 'complete':
-        endSession();
-        navigate('Cart');
+        try {
+          // 음성 세션 ID 가져오기
+          const sessionId = await voiceService.getCurrentSessionId();
+          
+          // 주문 생성
+          const order = await createOrder('card', {}, true, sessionId);
+          
+          speak(`주문이 완료되었습니다. 주문번호는 ${order.orderNumber}입니다.`);
+          endSession();
+          navigate('Home');
+        } catch (error) {
+          speak('주문 처리 중 문제가 발생했습니다. 다시 시도해주세요.');
+        }
         break;
 
       case 'navigate':
@@ -258,54 +307,26 @@ export const VoiceProvider = ({ children }) => {
     }
     
     if (pendingOrders.length > 0 && sessionState !== 'waiting_confirm') {
-        setSessionState('waiting_confirm');
-        speak(`다음 주문으로 ${pendingOrders[0].summary}이 있습니다. 추가하시겠어요?`);
+      setSessionState('waiting_confirm');
+      speak(`다음 주문으로 ${pendingOrders[0].summary}이 있습니다. 추가하시겠어요?`);
     }
-  };
+  }, [cartItems, pendingOrders, sessionState, addToCart, removeItem, clearCart, createOrder, findMenuItem, endSession, startListening, navigate, showRecommendations, speak]);
 
-  const showRecommendations = async () => {
-      const recommendations = await getRecommendations();
-      if (recommendations && recommendations.length > 0) {
-          navigate('RecommendationModal', { recommendations });
-      } else {
-          speak('죄송합니다, 지금은 추천해드릴 메뉴가 없네요.');
-      }
-  };
-  
-  const quickCommand = (command) => {
-      setRecognizedText(command);
-  };
-
-  const clearRecognizedText = () => {
-      setRecognizedText('');
-  }
-
-  const getSessionInfo = () => {
-      return {
-          active: sessionActive,
-          state: sessionState,
-          history: conversationHistory
-      }
-  }
-
-  const value = useMemo(() => ({
+  const value = {
     isListening,
-    isProcessing,
     recognizedText,
-    conversationHistory,
-    error,
-    sessionActive,
-    sessionState,
-    pendingOrders,
+    isProcessing,
     startListening,
     stopListening,
-    processCommand,
     clearRecognizedText,
+    processCommand,
+    speak,
+    sessionActive,
+    sessionState,
     endSession,
-    quickCommand,
-    getSessionInfo,
-    speak
-  }), [isListening, isProcessing, recognizedText, conversationHistory, error, sessionActive, sessionState, pendingOrders, startListening, stopListening, processCommand, clearRecognizedText, endSession, speak]);
+    conversationHistory,
+    pendingOrders,
+  };
 
   return (
     <VoiceContext.Provider value={value}>
@@ -314,4 +335,10 @@ export const VoiceProvider = ({ children }) => {
   );
 };
 
-export const useVoice = () => useContext(VoiceContext);
+export const useVoice = () => {
+  const context = useContext(VoiceContext);
+  if (!context) {
+    throw new Error('useVoice must be used within a VoiceProvider');
+  }
+  return context;
+};

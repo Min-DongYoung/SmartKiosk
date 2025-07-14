@@ -7,9 +7,14 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev",
+    "dev": "concurrently \"npm run start\" \"npm run server:dev\""
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.19.0",
+    "@react-native-community/netinfo": "^9.4.1",
     "@react-native-community/voice": "^1.1.9",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/stack": "^6.3.20",
@@ -33,6 +38,7 @@
     "@types/react": "^18.0.24",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.2.1",
+    "concurrently": "^7.6.0",
     "eslint": "^8.19.0",
     "jest": "^29.2.1",
     "metro-react-native-babel-preset": "0.76.8",

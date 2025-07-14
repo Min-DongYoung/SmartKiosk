@@ -120,102 +120,53 @@ const GlobalVoiceButton = () => {
   // 빠른 액션 버튼들 제거 - 단순화
 
   return (
-    <>
-      <Animated.View
+    <View style={styles.container}>
+      <TouchableOpacity
         style={[
-          styles.container,
-          {
-            transform: [{ scale: pulseAnim }],
-          },
+          styles.button,
+          { backgroundColor: getButtonColor() }
         ]}
+        onPress={handlePress}
+        disabled={isProcessing}
+        activeOpacity={0.8}
       >
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { backgroundColor: getButtonColor() }
-          ]}
-          onPress={handlePress}
-          disabled={isProcessing}
-          activeOpacity={0.8}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="white" size="large" />
-          ) : (
-            <Icon 
-              name={getButtonIcon()} 
-              size={38} 
-              color="white" 
-            />
-          )}
-        </TouchableOpacity>
-        
-        {/* 복잡한 상태 인디케이터들 제거 */}
-      </Animated.View>
-
-      {/* 상태 메시지 */}
-      {getStatusMessage() !== '' && (
-        <Animated.View 
-          style={[
-            styles.textContainer,
-            { opacity: fadeAnim }
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={styles.statusText}>
-            {getStatusMessage()}
-          </Text>
-        </Animated.View>
-      )}
-    </>
+        {isProcessing ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Icon 
+            name={getButtonIcon()} 
+            size={24} 
+            color="white" 
+          />
+        )}
+        <Text style={styles.buttonText}>{getStatusMessage() || '음성으로 주문'}</Text>
+      </TouchableOpacity>
+    </View>
   );
   
 };
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 1000,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
-    width: 75,
-    height: 75,
-    borderRadius: 37.5,
+    width: 200, // 너비 증가
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    flexDirection: 'row',
   },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#FF5252',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  badgeText: {
+  buttonText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
-  sessionIndicator: {
-    position: 'absolute',
-    bottom: -5,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    alignSelf: 'center',
-  },
+  // 기존 나머지 스타일은 유지 (textContainer 등)
   textContainer: {
     position: 'absolute',
     top: 140,
@@ -231,40 +182,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  pendingText: {
-    color: '#FFC107',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  quickActionsContainer: {
-    position: 'absolute',
-    bottom: 30,
-    right: 100,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  quickAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  confirmAction: {
-    backgroundColor: '#4CAF50',
-  },
-  cancelAction: {
-    backgroundColor: '#F44336',
-  },
-  completeAction: {
-    backgroundColor: '#2196F3',
   },
 });
 

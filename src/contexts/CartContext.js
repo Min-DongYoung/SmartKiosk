@@ -1,19 +1,25 @@
-import React, { createContext, useState, useCallback } from 'react';
-import { menuItems, calculatePrice, findMenuItem } from '../data/menuData';
+import React, { createContext, useState, useCallback, useContext } from 'react';
+import { useMenu } from './MenuContext';
+import { orderService } from '../services/orderService';
+import { Alert } from 'react-native';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [lastOrderNumber, setLastOrderNumber] = useState(null);
+  
+  const { findMenuItem, calculatePrice } = useMenu();
 
   const addToCart = useCallback((item) => {
-    // MenuDetailScreen에서 오는 경우와 음성에서 오는 경우를 구분
     let newItem;
     
     if (item.options && typeof item.options === 'object' && !Array.isArray(item.options)) {
-      // MenuDetailScreen에서 온 경우 (options가 객체)
+      // MenuDetailScreen에서 온 경우
       newItem = {
-        id: item.id,
+        id: item.id, // _id 대신 id 사용 (기존 호환성)
+        menuId: item.id, // 서버 전송용
         name: item.name,
         price: item.price,
         quantity: item.quantity,
@@ -21,10 +27,10 @@ export const CartProvider = ({ children }) => {
         totalPrice: item.totalPrice,
         category: item.category,
         description: item.description,
-        image: item.image
+        imageUrl: item.imageUrl, // imageUrl 사용
       };
     } else {
-      // 음성에서 온 경우 (기존 로직)
+      // 음성에서 온 경우
       const menuItem = findMenuItem(item.name);
       if (!menuItem) {
         console.warn(`메뉴를 찾을 수 없음: ${item.name}`);
@@ -33,7 +39,8 @@ export const CartProvider = ({ children }) => {
 
       const price = calculatePrice(menuItem, item.size, item.options);
       newItem = {
-        id: menuItem.id,
+        id: menuItem.id, // _id 대신 id 사용 (기존 호환성)
+        menuId: menuItem.id,
         name: menuItem.name,
         price: price,
         quantity: item.quantity || 1,
@@ -63,17 +70,61 @@ export const CartProvider = ({ children }) => {
         return [...prevItems, newItem];
       }
     });
-  }, []);
+  }, [findMenuItem, calculatePrice]);
+
+  // 주문 생성 (서버 연동)
+  const createOrder = useCallback(async (paymentMethod = 'card', customerInfo = {}, isVoiceOrder = false, voiceSessionId = null) => {
+    if (cartItems.length === 0) {
+      throw new Error('장바구니가 비어있습니다');
+    }
+
+    setIsProcessingOrder(true);
+    
+    try {
+      const orderData = {
+        items: cartItems.map(item => ({
+          menuId: item.menuId || item.id,
+          name: item.name,
+          quantity: item.quantity,
+          options: item.options,
+          price: item.price
+        })),
+        paymentMethod,
+        customerInfo,
+        isVoiceOrder,
+        voiceSessionId
+      };
+
+      const response = await orderService.createOrder(orderData);
+      
+      if (response.success) {
+        setLastOrderNumber(response.data.orderNumber);
+        clearCart();
+        return response.data;
+      } else {
+        throw new Error(response.error || '주문 처리 실패');
+      }
+    } catch (error) {
+      console.error('주문 생성 오류:', error);
+      Alert.alert(
+        '주문 실패',
+        error.error || '주문을 처리할 수 없습니다. 다시 시도해주세요.'
+      );
+      throw error;
+    } finally {
+      setIsProcessingOrder(false);
+    }
+  }, [cartItems]);
 
   const removeItem = useCallback((itemId) => {
     setCartItems(prevItems => {
-        const itemIndexToRemove = prevItems.findIndex(item => item.id === itemId);
-        if (itemIndexToRemove > -1) {
-            const newItems = [...prevItems];
-            newItems.splice(itemIndexToRemove, 1);
-            return newItems;
-        }
-        return prevItems;
+      const itemIndexToRemove = prevItems.findIndex(item => item.id === itemId);
+      if (itemIndexToRemove > -1) {
+        const newItems = [...prevItems];
+        newItems.splice(itemIndexToRemove, 1);
+        return newItems;
+      }
+      return prevItems;
     });
   }, []);
 
@@ -100,21 +151,20 @@ export const CartProvider = ({ children }) => {
               totalPrice: (item.price || 0) * newQuantity,
             }
           : item,
-      ).filter(item => item.quantity > 0) // 수량이 0이 되면 제거
-    );
+      ).filter(item => item.quantity > 0)
+    );s
   }, []);
 
   const updateCartItem = useCallback((originalItem, updatedItem) => {
     setCartItems(prevItems =>
       prevItems.map(item => {
-        // 원래 아이템과 id + options가 일치하는 경우 업데이트
         if (item.id === originalItem.id && 
             JSON.stringify(item.options) === JSON.stringify(originalItem.options)) {
           return { ...updatedItem };
         }
         return item;
       })
-    );
+    );s
   }, []);
 
   const clearCart = useCallback(() => {
@@ -129,13 +179,16 @@ export const CartProvider = ({ children }) => {
     <CartContext.Provider
       value={{
         cartItems,
+        isProcessingOrder,
+        lastOrderNumber,
         addToCart,
-        removeItem, // VoiceContext용
-        removeFromCart, // UI용
+        removeItem,
+        removeFromCart,
         updateQuantity,
         updateCartItem,
         clearCart,
         getTotalPrice,
+        createOrder,
       }}>
       {children}
     </CartContext.Provider>

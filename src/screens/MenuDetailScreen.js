@@ -1,4 +1,4 @@
-import React, {useState, useContext, useLayoutEffect, useCallback} from 'react';
+import React, {useState, useContext, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,362 +8,348 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import {CartContext} from '../contexts/CartContext';
 import {useVoice} from '../contexts/VoiceContext';
+import {useMenu} from '../contexts/MenuContext';
 
 const MenuDetailScreen = ({route, navigation}) => {
-  const {item, fromCart, fromMenuList, fromVoice, existingOptions, existingQuantity, originalCartItem} = route.params || {};
+  const {item: initialItem, fromVoice, existingOptions, existingQuantity, fromCart, originalCartItem} = route.params;
   const {addToCart, updateCartItem} = useContext(CartContext);
-  const {speak} = useVoice();
+  const {speak, sessionActive, startListening, endSession} = useVoice();
+  const {findMenuItem, calculatePrice} = useMenu();
 
-  // 기존 옵션이 있으면 사용, 없으면 기본값 설정
+  const [item, setItem] = useState(initialItem);
+  const [selectedSize, setSelectedSize] = useState(existingOptions?.size || item.sizeOptions?.[0] || 'medium');
+  const [selectedTemperature, setSelectedTemperature] = useState(existingOptions?.temperature || item.temperatureOptions?.[0] || 'hot');
+  const [selectedExtras, setSelectedExtras] = useState(existingOptions?.extras || []);
   const [quantity, setQuantity] = useState(existingQuantity || 1);
-  const [selectedOptions, setSelectedOptions] = useState(() => {
-    if (existingOptions) {
-      return existingOptions;
-    }
-    
-    const initialSize =
-      item.options?.size && item.options.size.includes('medium')
-        ? 'medium'
-        : item.options?.size
-        ? item.options.size[0]
-        : null;
-    const initialTemperature = item.options?.temperature
-      ? item.options.temperature[0]
-      : null;
-    return {
-      size: initialSize,
-      temperature: initialTemperature,
-      extras: [],
-    };
-  });
+  const [currentPrice, setCurrentPrice] = useState(0);
 
-  // 헤더 설정 및 뒤로가기 처리
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity 
-          onPress={handleBackPress}
-          style={{ marginLeft: 10 }}
-        >
-          <Icon name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, handleBackPress]);
-
-  // 음성 주문일 경우 안내 메시지 출력
-  React.useEffect(() => {
-    if (fromVoice) {
-      speak(`${item.name} 옵션을 확인하세요. 원하시는 옵션을 선택하신 후 장바구니에 담아주세요.`);
+  useEffect(() => {
+    // 서버에서 최신 메뉴 정보 가져오기 (혹시 모를 업데이트 대비)
+    const latestMenuItem = findMenuItem(initialItem.name);
+    if (latestMenuItem) {
+      setItem(latestMenuItem);
+      // 초기 옵션 설정 (기존 장바구니 항목 수정 시)
+      if (fromCart && originalCartItem) {
+        setSelectedSize(originalCartItem.options.size || latestMenuItem.sizeOptions?.[0] || 'medium');
+        setSelectedTemperature(originalCartItem.options.temperature || latestMenuItem.temperatureOptions?.[0] || 'hot');
+        setSelectedExtras(originalCartItem.options.extras || []);
+        setQuantity(originalCartItem.quantity);
+      } else if (fromVoice) {
+        setSelectedSize(existingOptions?.size || latestMenuItem.sizeOptions?.[0] || 'medium');
+        setSelectedTemperature(existingOptions?.temperature || latestMenuItem.temperatureOptions?.[0] || 'hot');
+        setQuantity(existingQuantity || 1);
+      }
     }
-  }, [fromVoice, item.name, speak]);
+  }, [initialItem, fromCart, originalCartItem, fromVoice, existingOptions, existingQuantity, findMenuItem]);
 
-  const handleBackPress = useCallback(() => {
-    if (fromCart) {
-      navigation.navigate('Cart');
-    } else if (fromMenuList) {
-      navigation.navigate('MenuList');
-    } else {
-      // fromVoice이거나 기타 경우 - Home으로
-      navigation.navigate('Home');
+  useEffect(() => {
+    if (item) {
+      const price = calculatePrice(item, selectedSize, selectedExtras);
+      setCurrentPrice(price);
     }
-  }, [fromCart, fromMenuList, navigation]);
+  }, [item, selectedSize, selectedExtras, calculatePrice]);
 
-  const calculateAdjustedPrice = () => {
-    let adjustedPrice = item.price;
-    if (selectedOptions.size === 'small') {
-      adjustedPrice -= 500;
-    } else if (selectedOptions.size === 'large') {
-      adjustedPrice += 500;
+  useEffect(() => {
+    if (fromVoice && sessionActive) {
+      speak(`${item.name} ${quantity}개를 선택하셨습니다. 사이즈는 ${selectedSize}, 온도는 ${selectedTemperature}입니다. 추가 옵션이 필요하시면 말씀해주세요.`);
+      startListening();
     }
-    return adjustedPrice;
-  };
+  }, [fromVoice, sessionActive, item, quantity, selectedSize, selectedTemperature, speak, startListening]);
 
   const handleAddToCart = () => {
-    const adjustedPrice = calculateAdjustedPrice();
-    const cartItem = {
-      id: item.id,
+    if (!item) return;
+
+    const itemToAdd = {
+      id: item._id, // MongoDB _id 사용
       name: item.name,
-      price: adjustedPrice,
+      price: currentPrice,
       quantity: quantity,
-      options: selectedOptions,
-      totalPrice: adjustedPrice * quantity,
+      options: {
+        size: selectedSize,
+        temperature: selectedTemperature,
+        extras: selectedExtras,
+      },
+      totalPrice: currentPrice * quantity,
       category: item.category,
       description: item.description,
-      image: item.image
+      imageUrl: item.imageUrl, // imageUrl 사용
     };
 
     if (fromCart && originalCartItem) {
-      // Cart에서 온 경우 기존 아이템 수정
-      updateCartItem(originalCartItem, cartItem);
-      Alert.alert('수정 완료', `${item.name} 옵션이 수정되었습니다.`);
-      navigation.navigate('Cart');
+      updateCartItem(originalCartItem, itemToAdd);
+      Alert.alert('장바구니 수정', `${item.name}이(가) 장바구니에서 수정되었습니다.`);
     } else {
-      // 새로운 아이템 추가
-      addToCart(cartItem);
-      const message = `${item.name}이(가) 장바구니에 추가되었습니다.`;
-      Alert.alert('장바구니', message);
-      
-      if (fromVoice) {
-        speak(message + ' 추가 주문하시겠어요?');
-      }
-      
-      // 경로에 따른 네비게이션
-      if (fromMenuList) {
-        navigation.navigate('MenuList');
-      } else {
-        navigation.navigate('Home');
-      }
+      addToCart(itemToAdd);
+      Alert.alert('장바구니 추가', `${item.name} ${quantity}개가 장바구니에 담겼습니다.`);
     }
+
+    if (sessionActive) {
+      endSession();
+    }
+    navigation.navigate('MenuList');
   };
 
+  if (!item) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>메뉴 정보를 불러올 수 없습니다.</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <Image source={{uri: item.image}} style={styles.image} />
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Image source={{uri: item.imageUrl}} style={styles.menuImage} />
+        <View style={styles.detailsContainer}>
+          <Text style={styles.menuName}>{item.name}</Text>
+          <Text style={styles.menuDescription}>{item.description}</Text>
+          <Text style={styles.menuPrice}>{currentPrice.toLocaleString()}원</Text>
 
-      <View style={styles.content}>
-        {fromVoice && (
-          <View style={styles.voiceNotice}>
-            <Icon name="mic" size={20} color="#007AFF" />
-            <Text style={styles.voiceNoticeText}>
-              음성으로 주문하신 메뉴입니다. 옵션을 확인해주세요.
-            </Text>
-          </View>
-        )}
-        
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.price}>
-          {calculateAdjustedPrice().toLocaleString()}원
-        </Text>
-
-        {/* 옵션 선택 */}
-        {item.options?.size && (
-          <View style={styles.optionSection}>
-            <Text style={styles.optionTitle}>사이즈</Text>
-            <View style={styles.optionButtons}>
-              {item.options.size.map(size => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.optionButton,
-                    selectedOptions.size === size && styles.selectedOption,
-                  ]}
-                  onPress={() =>
-                    setSelectedOptions({...selectedOptions, size})
-                  }>
-                  <Text
+          {/* 사이즈 옵션 */}
+          {item.sizeOptions && item.sizeOptions.length > 0 && (
+            <View style={styles.optionSection}>
+              <Text style={styles.optionTitle}>사이즈</Text>
+              <View style={styles.optionsContainer}>
+                {item.sizeOptions.map(size => (
+                  <TouchableOpacity
+                    key={size}
                     style={[
-                      styles.optionText,
-                      selectedOptions.size === size && styles.selectedText,
-                    ]}>
-                    {size === 'small'
-                      ? '작은'
-                      : size === 'medium'
-                      ? '보통'
-                      : '큰'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                      styles.optionButton,
+                      selectedSize === size && styles.selectedOptionButton,
+                    ]}
+                    onPress={() => setSelectedSize(size)}>
+                    <Text
+                      style={[
+                        styles.optionButtonText,
+                        selectedSize === size && styles.selectedOptionButtonText,
+                      ]}>
+                      {size.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 온도 옵션 */}
+          {item.temperatureOptions && item.temperatureOptions.length > 0 && (
+            <View style={styles.optionSection}>
+              <Text style={styles.optionTitle}>온도</Text>
+              <View style={styles.optionsContainer}>
+                {item.temperatureOptions.map(temp => (
+                  <TouchableOpacity
+                    key={temp}
+                    style={[
+                      styles.optionButton,
+                      selectedTemperature === temp &&
+                        styles.selectedOptionButton,
+                    ]}
+                    onPress={() => setSelectedTemperature(temp)}>
+                    <Text
+                      style={[
+                        styles.optionButtonText,
+                        selectedTemperature === temp &&
+                          styles.selectedOptionButtonText,
+                      ]}>
+                      {temp.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 추가 옵션 (extras) */}
+          {item.extras && item.extras.length > 0 && (
+            <View style={styles.optionSection}>
+              <Text style={styles.optionTitle}>추가 옵션</Text>
+              <View style={styles.optionsContainer}>
+                {item.extras.map(extra => (
+                  <TouchableOpacity
+                    key={extra.name}
+                    style={[
+                      styles.optionButton,
+                      selectedExtras.includes(extra.name) &&
+                        styles.selectedOptionButton,
+                    ]}
+                    onPress={() => {
+                      setSelectedExtras(prev =>
+                        prev.includes(extra.name)
+                          ? prev.filter(e => e !== extra.name)
+                          : [...prev, extra.name],
+                      );
+                    }}>
+                    <Text
+                      style={[
+                        styles.optionButtonText,
+                        selectedExtras.includes(extra.name) &&
+                          styles.selectedOptionButtonText,
+                      ]}>
+                      {extra.name} (+{extra.price.toLocaleString()}원)
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 수량 조절 */}
+          <View style={styles.quantitySection}>
+            <Text style={styles.optionTitle}>수량</Text>
+            <View style={styles.quantityControls}>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+                <Text style={styles.quantityButtonText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{quantity}</Text>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => setQuantity(quantity + 1)}>
+                <Text style={styles.quantityButtonText}>+</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
-
-        {item.options?.temperature && (
-          <View style={styles.optionSection}>
-            <Text style={styles.optionTitle}>온도</Text>
-            <View style={styles.optionButtons}>
-              {item.options.temperature.map(temp => (
-                <TouchableOpacity
-                  key={temp}
-                  style={[
-                    styles.optionButton,
-                    selectedOptions.temperature === temp &&
-                      styles.selectedOption,
-                  ]}
-                  onPress={() =>
-                    setSelectedOptions({...selectedOptions, temperature: temp})
-                  }>
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selectedOptions.temperature === temp &&
-                        styles.selectedText,
-                    ]}>
-                    {temp === 'hot' ? '따뜻한' : '차가운'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* 수량 선택 */}
-        <View style={styles.quantitySection}>
-          <Text style={styles.optionTitle}>수량</Text>
-          <View style={styles.quantityControls}>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => setQuantity(Math.max(1, quantity - 1))}>
-              <Text style={styles.quantityButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.quantity}>{quantity}</Text>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => setQuantity(quantity + 1)}>
-              <Text style={styles.quantityButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
         </View>
+      </ScrollView>
 
-        {/* 합계 */}
-        <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>합계</Text>
-          <Text style={styles.totalPrice}>
-            {(calculateAdjustedPrice() * quantity).toLocaleString()}원
-          </Text>
-        </View>
-
-        {/* 버튼 */}
-        <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
-          <Text style={styles.addButtonText}>
-            {fromCart ? '옵션 수정 완료' : '장바구니에 담기'}
+      <View style={styles.addToCartButtonContainer}>
+        <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+          <Text style={styles.addToCartButtonText}>
+            {fromCart ? '장바구니 수정' : '장바구니에 담기'} - 총{' '}
+            {(currentPrice * quantity).toLocaleString()}원
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#f5f5f5',
   },
-  image: {
+  scrollContent: {
+    paddingBottom: 100, // 장바구니 버튼 공간 확보
+  },
+  menuImage: {
     width: '100%',
-    height: 300,
+    height: 250,
+    resizeMode: 'cover',
   },
-  content: {
+  detailsContainer: {
     padding: 20,
   },
-  name: {
+  menuName: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 10,
     color: 'black',
   },
-  price: {
+  menuDescription: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 15,
+  },
+  menuPrice: {
     fontSize: 24,
+    fontWeight: 'bold',
     color: '#007AFF',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   optionSection: {
-    marginBottom: 25,
+    marginBottom: 20,
   },
   optionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: 'black',
   },
-  optionButtons: {
+  optionsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   optionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderWidth: 2,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 25,
-    alignItems: 'center',
+    backgroundColor: 'white',
   },
-  selectedOption: {
-    borderColor: '#007AFF',
+  selectedOptionButton: {
     backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
-  optionText: {
+  optionButtonText: {
+    color: 'black',
     fontSize: 16,
-    color: '#333',
   },
-  selectedText: {
+  selectedOptionButtonText: {
     color: 'white',
-    fontWeight: 'bold',
   },
   quantitySection: {
-    marginBottom: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   quantityButton: {
-    width: 50,
-    height: 50,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityButtonText: {
     fontSize: 20,
+    fontWeight: 'bold',
     color: 'black',
   },
-  quantity: {
+  quantityText: {
     fontSize: 20,
-    marginHorizontal: 30,
-    minWidth: 40,
-    textAlign: 'center',
+    fontWeight: 'bold',
+    marginHorizontal: 20,
     color: 'black',
   },
-  totalSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
+  addToCartButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    marginBottom: 20,
+    elevation: 10,
   },
-  totalLabel: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  totalPrice: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  addButton: {
+  addToCartButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 18,
+    padding: 18,
     borderRadius: 30,
     alignItems: 'center',
   },
-  addButtonText: {
+  addToCartButtonText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
   },
-  voiceNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderLeft: 4,
-    borderLeftColor: '#007AFF',
-  },
-  voiceNoticeText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
+  errorText: {
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 18,
+    color: 'red',
   },
 });
 

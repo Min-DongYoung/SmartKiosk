@@ -126,10 +126,6 @@ const CartScreen = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>장바구니</Text>
-      </View>
-
       {cartItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>장바구니가 비어있습니다</Text>
